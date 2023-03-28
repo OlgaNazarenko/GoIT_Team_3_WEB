@@ -25,10 +25,12 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), index=True)
     email: Mapped[str] = mapped_column(String(250), unique=True, index=True)
     password: Mapped[str] = mapped_column(String(255))
+    user_role: Mapped[str] = mapped_column(String(50), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     avatar: Mapped[Optional[str]] = mapped_column(String(255))
     refresh_token: Mapped[Optional[str]] = mapped_column(String(255))
     confirmed: Mapped[bool] = mapped_column(default=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
 
 
 class Image(Base):
@@ -63,4 +65,3 @@ class Tag(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(25), nullable=False, unique=True)
-    
