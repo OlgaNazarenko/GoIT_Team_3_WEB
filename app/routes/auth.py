@@ -2,13 +2,13 @@ from fastapi import APIRouter, HTTPException, Depends, status, Security, Backgro
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_limiter.depends import RateLimiter
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.connect import get_db
-from src.shemas.users import UserModel, UserResponse, TokenModel, EmailModel
-from src.repository import users as repository_users
-from src.services.auth import auth_service
-from src.services.email import send_email_confirmed, send_email_reset_password
+from app.database.connect import get_db
+from app.models.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
+from app.repository import users as repository_users
+from app.services.auth import auth_service
+from app.services.email import send_email_confirmed, send_email_reset_password
 from config import Template
 
 
@@ -16,8 +16,8 @@ router = APIRouter(prefix='/auth', tags=["auth"])
 security = HTTPBearer()
 
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def signup(body: UserModel, background_tasks: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
+@router.post("/signup", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
+async def signup(body: UserCreate, background_tasks: BackgroundTasks, request: Request, db: AsyncSession = Depends(get_db)):
     """
     The signup function creates a new user in the database.
         It takes in a UserModel object, which is validated by pydantic.
@@ -27,13 +27,14 @@ async def signup(body: UserModel, background_tasks: BackgroundTasks, request: Re
     :param body: UserModel: Get the user's email and password from the request body
     :param background_tasks: BackgroundTasks: Add tasks to the background queue
     :param request: Request: Get the base url of the server
-    :param db: Session: Get the database session
+    :param db: AsyncSession: Get the database session
     :return: A dictionary with the user and a detail message
     """
-    exist_user = await repository_users.get_user_by_email(body.email, db)
+    exist_user = await repository_users.get_user_by_email_or_username(body.email, body.username, db)
 
     if exist_user:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="An account with the same email address or username already exists")
 
     body.password = auth_service.get_password_hash(body.password)
     new_user = await repository_users.create_user(body, db)
@@ -43,20 +44,20 @@ async def signup(body: UserModel, background_tasks: BackgroundTasks, request: Re
     return {"user": new_user, "detail": "User successfully created"}
 
 
-@router.post("/login", response_model=TokenModel)
-async def login(body: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/login", response_model=TokenResponse)
+async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     """
     The login function is used to authenticate a user.
 
     :param body: OAuth2PasswordRequestForm: Get the username and password from the request body
-    :param db: Session: Get the database session
+    :param db: AsyncSession: Get the database session
     :return: A dictionary with the access_token, refresh_token and token type
     """
     user = await repository_users.get_user_by_email(body.username, db)
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email")
-    if not user.confirmed:
+    if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not confirmed")
     if not auth_service.verify_password(body.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
@@ -70,15 +71,15 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: Session = Depen
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
-@router.get('/refresh_token', response_model=TokenModel)
-async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+@router.get('/refresh_token', response_model=TokenResponse)
+async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security), db: AsyncSession = Depends(get_db)):
     """
     The refresh_token function is used to refresh the access token.
         The function takes in a refresh token and returns a new access_token and refresh_token pair.
         If the user's current refresh token does not match what was passed into this function, then it will return an error.
 
     :param credentials: HTTPAuthorizationCredentials: Retrieve the token from the header
-    :param db: Session: Access the database
+    :param db: AsyncSession: Access the database
     :return: A dictionary with the access_token, refresh_token and token type
     """
     token = credentials.credentials
@@ -99,7 +100,7 @@ async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(sec
 
 
 @router.get('/confirmed_email/{token}', include_in_schema=False)
-async def confirmed_email(token: str, db: Session = Depends(get_db)):
+async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
     """
     The confirmed_email function is used to confirm a user's email address.
         It takes the token from the URL and uses it to get the user's email address.
@@ -108,7 +109,7 @@ async def confirmed_email(token: str, db: Session = Depends(get_db)):
         our database with their new status of &quot;confirmed&quot;.
 
     :param token: str: Get the token from the url
-    :param db: Session: Access the database
+    :param db: AsyncSession: Access the database
     :return: A message that the email is already confirmed
     """
     email = await auth_service.get_email_from_token(token)
@@ -117,7 +118,7 @@ async def confirmed_email(token: str, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification error")
 
-    if user.confirmed:
+    if user.email_verified:
         return {"message": "Your email is already confirmed"}
 
     await repository_users.confirmed_email(user, db)
@@ -127,7 +128,7 @@ async def confirmed_email(token: str, db: Session = Depends(get_db)):
 
 @router.post("/reset_password", dependencies=[Depends(RateLimiter(times=10, minutes=5))])
 async def reset_password(body: EmailModel, background_tasks: BackgroundTasks, request: Request,
-                         db: Session = Depends(get_db)):
+                         db: AsyncSession = Depends(get_db)):
     """
     The reset_password function is used to send an email to the user with a link that will allow them
     to reset their password. The function takes in the body of the request, which contains only an email address,
@@ -139,7 +140,7 @@ async def reset_password(body: EmailModel, background_tasks: BackgroundTasks, re
     :param body: EmailModel: Get the email from the request body
     :param background_tasks: BackgroundTasks: Add a task to the background tasks queue
     :param request: Request: Get the base url of the website
-    :param db: Session: Access the database
+    :param db: AsyncSession: Access the database
     :return: A message and a timeout_link
     """
     user = await repository_users.get_user_by_email(body.email, db)
@@ -149,17 +150,17 @@ async def reset_password(body: EmailModel, background_tasks: BackgroundTasks, re
 
     background_tasks.add_task(send_email_reset_password, user.email, user.username, request.base_url)
 
-    return {"message": "Password reset email sent", "timeout_link": {"seconds": 600}}
+    return {"message": "Password reset email sent", "timeout_link": {"seconds": 86_400}}
 
 
 @router.get('/reset_password/{token}', response_class=HTMLResponse, include_in_schema=False)
-async def reset_password_template(token: str, request: Request, db: Session = Depends(get_db)):
+async def reset_password_template(token: str, request: Request, db: AsyncSession = Depends(get_db)):
     """
     The reset_password_template function is used to render the new_password.html template, which allows a user to reset their password.
 
     :param token: str: Get the token from the url
     :param request: Request: Get the request object
-    :param db: Session: Pass the database session to the function
+    :param db: AsyncSession: Pass the database session to the function
     :return: A template response object, which is a subclass of response
     """
     email = await auth_service.get_email_from_token(token)
@@ -167,21 +168,21 @@ async def reset_password_template(token: str, request: Request, db: Session = De
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification error")
-    if not user.confirmed:
+    if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not confirmed")
 
     return Template.html_response.TemplateResponse("new_password.html", {"request": request})
 
 
 @router.post('/reset_password/{token}', include_in_schema=False)
-async def new_password(token: str, password: str = Form(...), db: Session = Depends(get_db)):
+async def new_password(token: str, password: str = Form(...), db: AsyncSession = Depends(get_db)):
     """
     The new_password function is used to change the password of a user.
         It takes in a token and new password, and returns an ok status if successful.
 
     :param token: str: Get the email from the token
     :param password: str: Get the password from the request body
-    :param db: Session: Get the database session from the dependency injection container
+    :param db: AsyncSession: Get the database session from the dependency injection container
     :return: A json object with a status field
     """
     email = await auth_service.get_email_from_token(token)
@@ -189,7 +190,7 @@ async def new_password(token: str, password: str = Form(...), db: Session = Depe
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification error")
-    if not user.confirmed:
+    if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not confirmed")
 
     password = auth_service.get_password_hash(password)
