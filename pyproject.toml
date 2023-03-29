@@ -2,18 +2,27 @@
 name = "goit-team-3-web"
 version = "0.1.0"
 description = ""
-authors = ["AndrewCheUA <andreicheban@gmail.com>"]
+authors = ["TT1410 <112493080+TT1410@users.noreply.github.com>"]
 readme = "README.md"
 packages = [{include = "goit_team_3_web"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.95.0"
-uvicorn = {extras = ["standard"], version = "^0.21.1"}
+fastapi-mail = "^1.2.6"
+fastapi-limiter = "^0.1.5"
+python-multipart = "^0.0.6"
+uvicorn = {extras = ["standart"], version = "^0.21.1"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 sqlalchemy = "^2.0.7"
-cloudinary = "^1.32.0"
+pydantic = {extras = ["dotenv", "email"], version = "^1.10.7"}
 alembic = "^1.10.2"
-psycopg2 = "^2.9.5"
+redis = "^4.5.3"
+cloudinary = "^1.32.0"
+libgravatar = "^1.0.4"
+asyncpg = "^0.27.0"
+psycopg2-binary = "^2.9.5"
 
 
 [build-system]
