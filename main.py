@@ -10,21 +10,35 @@ from fastapi_limiter import FastAPILimiter
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from src.database.connect import get_db
-from src.routes import auth, users
-from config import settings, BANNED_IPS, ORIGINS
-
-
-app = FastAPI()
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from app.database.connect import get_db
+from app.routes import router
+from config import (
+    settings,
+    PROJECT_NAME,
+    VERSION,
+    API_PREFIX,
+    BANNED_IPS,
+    ORIGINS,
 )
+
+
+def get_application():
+    app = FastAPI(title=PROJECT_NAME, version=VERSION)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.include_router(router, prefix=API_PREFIX)
+
+    return app
+
+
+app = get_application()
 
 
 @app.middleware("http")
@@ -58,17 +72,6 @@ async def startup():
     )
 
 
-@app.get("/", name='Root project')
-async def read_root():
-    """
-    The read_root function returns a dictionary with the key «message» and value «REST APP v0.2».
-    This is the root of our API, so it's just a simple message.
-
-    :return: A dictionary with a key «message» and value «rest app v0.2»
-    """
-    return {"message": "REST APP v1.2"}
-
-
 @app.get("/api/healthchecker")
 async def healthchecker(db: Session = Depends(get_db)):
     """
@@ -93,10 +96,6 @@ async def healthchecker(db: Session = Depends(get_db)):
         print(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Error connecting to the database")
-
-
-app.include_router(auth.router, prefix='/api')
-app.include_router(users.router, prefix='/api')
 
 
 if __name__ == '__main__':
