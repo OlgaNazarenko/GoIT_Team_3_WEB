@@ -27,7 +27,8 @@ class Image(Base):
     __tablename__ = 'images'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    url: Mapped[str] = mapped_column(String(255))
+    uuid: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(1200))
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
