@@ -44,7 +44,7 @@ class Image(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     user_id: Mapped[str] = mapped_column(ForeignKey(User.id, ondelete="CASCADE"))
 
-    user: Mapped[User] = relationship(backref="contacts")
+    user: Mapped[User] = relationship(backref="images")
     tags = relationship("Tag", secondary=image_m2m_tag, backref="images")
 
 
