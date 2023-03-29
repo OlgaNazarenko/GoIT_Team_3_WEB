@@ -36,7 +36,7 @@ class User(Base):
 class Image(Base):
     __tablename__ = 'images'
     __table_args__ = (
-        UniqueConstraint('email', 'user_id', name='unique_contact_user'),
+        UniqueConstraint('user_id', name='unique_contact_user'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
