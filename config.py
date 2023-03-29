@@ -5,12 +5,16 @@ from ipaddress import ip_address
 from pydantic import BaseSettings, EmailStr
 from fastapi.templating import Jinja2Templates
 
+
+PROJECT_NAME = "WEB-Project Team 3"
+VERSION = "1.0.0"
+API_PREFIX = "/api"
+
 BASE_DIR = Path(__file__).parent
 
 BANNED_IPS = [
     ip_address("192.168.1.1"), ip_address("192.168.1.2"),
 ]
-
 ORIGINS = [
     "http://localhost:3000",
 ]
@@ -18,8 +22,8 @@ ORIGINS = [
 
 @dataclass(frozen=True)
 class Template:
-    emails: Path = BASE_DIR / 'src' / 'templates' / 'emails'
-    html_response: Jinja2Templates = Jinja2Templates(directory=BASE_DIR / 'src' / 'templates' / 'response')
+    emails: Path = BASE_DIR / 'app' / 'templates' / 'emails'
+    html_response: Jinja2Templates = Jinja2Templates(directory=BASE_DIR / 'app' / 'templates' / 'response')
 
 
 class Settings(BaseSettings):

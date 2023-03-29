@@ -6,7 +6,7 @@ from config import settings
 
 async_engine = create_async_engine(settings.db_url, future=True)
 
-AsyncSessionLocal = sessionmaker(async_engine, autocommit=False, autoflush=False, class_=AsyncSession)
+AsyncSessionLocal = sessionmaker(async_engine, autocommit=False, autoflush=False, class_=AsyncSession)  # noqa
 
 
 # Dependency

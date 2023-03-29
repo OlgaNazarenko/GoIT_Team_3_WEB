@@ -7,11 +7,11 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.connect import get_db
-from src.repository import users as repository_users
-from src.database.models import User
+from app.database.connect import get_db
+from app.repository import users as repository_users
+from app.database.models import User
 from config import settings
 
 
@@ -146,7 +146,7 @@ class Auth:
         except JWTError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Could not validate credentials')
 
-    async def get_current_user(self, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    async def get_current_user(self, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
         """
         The get_current_user function is a dependency that will be used in the
             UserRouter class. It takes an access token as input and returns the user
@@ -154,7 +154,7 @@ class Auth:
 
         :param self: Access the class attributes and methods
         :param token: str: Get the token from the request header
-        :param db: Session: Get the database session
+        :param db: AsyncSession: Get the database session
         :return: The user object that matches the email in the jwt
         """
         credentials_exception = HTTPException(
