@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from app.database.models import UserRole, User
 from app.services.auth import auth_service
@@ -20,4 +20,5 @@ class UserRoleFilter:
         elif current_user.role == UserRole.user and self.role == UserRole.user:
             return
 
-        raise HTTPException(status_code=400, detail="Invalid role")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"Access denied. Access open to {current_user.role}")
