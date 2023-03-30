@@ -31,6 +31,17 @@ def upload_image(file: BinaryIO) -> str:
 
 
 def get_format_image(file_id: str, width: int = 250, height: int = 250, crop: str = 'fill'):
+    """
+    The download_image function downloads an image, from Cloudinary and returns the URL of the uploaded image.
+
+    :param file_id: str: Identify the file to be download
+    :param user_id: int: Specify the user id of the user who uploaded the image
+    :param width: int: Set the width of the image
+    :param height: int: Set the height of the image
+    :param crop: str: Fit the image into the requested size
+    :return: The url of the uploaded image
+    """
+    
     return cloudinary.CloudinaryImage(file_id).build_url(
         width=width,
         height=height,
