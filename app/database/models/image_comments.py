@@ -1,4 +1,7 @@
-from sqlalchemy import String, ForeignKey
+from typing import Optional
+from datetime import datetime
+
+from sqlalchemy import String, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -13,6 +16,8 @@ class Comment(Base):
     data: Mapped[str] = mapped_column(String(500), index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey(User.id, ondelete="CASCADE", onupdate="CASCADE"))
     image_id: Mapped[str] = mapped_column(ForeignKey(Image.id, ondelete="CASCADE", onupdate="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now())
 
     user: Mapped[User] = relationship(backref="comments")
     image: Mapped[Image] = relationship(backref="comments")

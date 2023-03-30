@@ -70,6 +70,14 @@ async def startup():
         await redis.Redis(host=settings.redis_host, port=settings.redis_port, password=settings.redis_password,
                           db=0, encoding="utf-8", decode_responses=True)
     )
+@app.get("/", name="Images app team_3_project")
+def read_root():
+    """
+    The read_root function returns a dictionary with the key &quot;message&quot; and value &quot;REST APP v-0.0&quot;.
+
+    :return: A dictionary with a &quot;message&quot; key
+    """
+    return {"message": "REST APP v-1.0"}
 
 
 @app.get("/api/healthchecker")

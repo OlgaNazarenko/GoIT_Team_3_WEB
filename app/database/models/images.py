@@ -1,3 +1,4 @@
+from typing import Optional
 from datetime import datetime
 
 from sqlalchemy import (
@@ -30,6 +31,7 @@ class Image(Base):
     uuid: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(String(1200))
     created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
     user: Mapped[User] = relationship(backref="images")
