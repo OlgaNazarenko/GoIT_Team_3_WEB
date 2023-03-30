@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import User
-from app.models.user import UserCreate
+from app.schemas.user import UserCreate
 from app.services.gravatar import get_gravatar
 
 
