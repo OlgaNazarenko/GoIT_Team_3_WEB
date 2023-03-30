@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.connect import get_db
 from app.database.models import User
 from app.repository import users as repository_users
-from app.models.user import (
+from app.schemas.user import (
     UserPublic,
     UserPasswordUpdate,
     EmailModel,

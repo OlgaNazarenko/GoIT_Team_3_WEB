@@ -5,7 +5,7 @@ from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
-from app.models.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
+from app.schemas.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
 from app.repository import users as repository_users
 from app.services.auth import auth_service
 from app.services.email import send_email_confirmed, send_email_reset_password
