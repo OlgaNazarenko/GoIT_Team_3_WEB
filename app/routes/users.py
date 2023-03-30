@@ -42,9 +42,10 @@ async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(ge
     :return: The updated user object
     """
     loop = asyncio.get_event_loop()
-    avatar = await loop.run_in_executor(None, cloudinary.upload_image, file.file, current_user.id)
+    file_id = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
+    avatar_url = await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
 
-    return await repository_users.update_avatar(current_user.id, avatar, db)
+    return await repository_users.update_avatar(current_user.id, avatar_url, db)
 
 
 @router.patch("/email", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=2, seconds=60))])

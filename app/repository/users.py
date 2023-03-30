@@ -96,15 +96,14 @@ async def update_avatar(user_id: int, url: str, db: AsyncSession) -> User:
     :param db: AsyncSession: Pass the database session to the function
     :return: A user object
     """
-    async with db.begin():
-        user = await db.scalar(
-            update(User)
-            .values(avatar=url)
-            .filter(User.id == user_id)
-            .returning(User)
-        )
+    user = await db.scalar(
+        update(User)
+        .values(avatar=url)
+        .filter(User.id == user_id)
+        .returning(User)
+    )
 
-        await db.commit()
+    await db.commit()
 
     await db.refresh(user)
 
