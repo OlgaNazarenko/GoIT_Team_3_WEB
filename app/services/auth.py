@@ -1,12 +1,13 @@
 import pickle
+from calendar import timegm
+from datetime import datetime, timedelta
 from typing import Optional
 
 import redis as redis_db
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
-from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
@@ -88,6 +89,7 @@ class Auth:
         :param expires_delta: Optional[float]: Set the expiration time of the token
         :return: A string that is the access token
         """
+        expires_delta = 86_400  # TODO термін дії токена 24 години лише для розробки!
         expire = datetime.utcnow() + timedelta(seconds=expires_delta or 15 * 60)
         return self.__encode_jwt(data, datetime.utcnow(), expire, "access_token")
 
@@ -169,7 +171,7 @@ class Auth:
 
             if payload.get('scope') == 'access_token':
                 email = payload.get("sub")
-                if email is None:
+                if email is None or await self._access_token_is_blacklist(email, token):
                     raise credentials_exception
             else:
                 raise credentials_exception
@@ -213,6 +215,46 @@ class Auth:
         except JWTError:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 detail="Invalid token for email verification")
+
+    async def _access_token_is_blacklist(self, email: str, token: str) -> bool:
+        """
+        The access_token_is_blacklist function checks if the access token is in the blacklist.
+            Args:
+                email (str): The user's email address.
+                token (str): The user's access token.
+
+        :param self: Represent the instance of the class
+        :param email: str: Get the token from redis, and the token: str parameter is used to check if it matches
+        :param token: str: Check if the token is blacklisted
+        :return: A boolean value
+        """
+        rd_token = self.redis.get(f"black-list:{email}")
+
+        if rd_token and token == rd_token.decode('utf-8'):
+            return True
+
+        return False
+
+    async def add_access_token_to_blacklist(self, access_token: str) -> None:
+        """
+        The logout function takes an access token and adds it to the black list.
+        The function first decodes the JWT, then gets the email from it.
+        It also calculates how many seconds are left until expiration of that token.
+        Then, we add a key-value pair to Redis where the key is "black-list:{email}" and
+        the value is "access_token". We set an expiration time on this key equal to
+        the number of seconds remaining until expiration.
+
+        :param self: Represent the instance of the class
+        :param access_token: str: Get the email from the token
+        :return: None
+        """
+        payload = self.__decode_jwt(access_token)
+
+        email: str = payload.get('sub')
+        expire_seconds = payload.get('exp') - timegm(datetime.utcnow().utctimetuple())
+
+        self.redis.set(f"black-list:{email}", access_token.encode('utf-8'))
+        self.redis.expire(f"black-list:{email}", expire_seconds)
 
 
 auth_service = Auth()

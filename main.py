@@ -23,6 +23,12 @@ from config import (
 
 
 def get_application():
+    """
+    The get_application function is a factory function that returns an instance of the FastAPI application.
+    It also adds CORS middleware to the application, which allows it to accept requests from other origins.
+
+    :return: The fastapi application object
+    """
     app = FastAPI(title=PROJECT_NAME, version=VERSION)
 
     app.add_middleware(
@@ -32,8 +38,6 @@ def get_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    app.include_router(router, prefix=API_PREFIX)
 
     return app
 
@@ -70,6 +74,8 @@ async def startup():
         await redis.Redis(host=settings.redis_host, port=settings.redis_port, password=settings.redis_password,
                           db=0, encoding="utf-8", decode_responses=True)
     )
+
+
 @app.get("/", name="Images app team_3_project")
 def read_root():
     """
@@ -104,6 +110,9 @@ async def healthchecker(db: Session = Depends(get_db)):
         print(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Error connecting to the database")
+
+
+app.include_router(router, prefix=API_PREFIX)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,24 +13,29 @@ from app.schemas.image import (
 from app.services import cloudinary
 from app.services.auth import auth_service
 
-
 router = APIRouter(prefix="/images", tags=["images"])
 
 
-
 @router.post("/", response_model=ImageCreateResponse, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def upload_image(file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200), db: AsyncSession = Depends(get_db),
-                        current_user: User = Depends(auth_service.get_current_user)):
+async def upload_image(file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
+                       db: AsyncSession = Depends(get_db),
+                       current_user: User = Depends(auth_service.get_current_user)):
     """
-    The upload_image function uploads the image to Cloudinary.
+    The upload_image function is used to upload an image to the cloudinary server.
+    The function takes in a file, description and database session as parameters.
+    It then uses the cloudinary library to upload the image and returns a response with
+    the uploaded image's id.
 
-    :param file: UploadFile: Get the file that is uploaded
+    :param file: UploadFile: Get the file from the request body
+    :param description: str: Get the description of the image from the request body
     :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the current user
-    :return: The uploaded image
+    :param current_user: User: Get the user id of the current logged in user
+    :return: A dict with the following keys:
     """
     loop = asyncio.get_event_loop()
     file_id = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
 
+    if file_id is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
 
     return await repository_images.create_image(current_user.id, description, file_id, db)
