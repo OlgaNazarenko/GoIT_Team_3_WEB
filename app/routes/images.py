@@ -38,4 +38,6 @@ async def upload_image(file: UploadFile = File(), description: str = Form(min_le
     if file_id is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
 
-    return await repository_images.create_image(current_user.id, description, file_id, db)
+    image = await repository_images.create_image(current_user.id, description, file_id, db)
+
+    return {"image": image, "detail": "Image successfully created"}
