@@ -32,6 +32,6 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
         try:
             url = await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
         except Exception:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Url does not exist")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Url does not exist")
 
         return url
