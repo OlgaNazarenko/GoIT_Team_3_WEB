@@ -36,6 +36,6 @@ class ImageCreateResponse(CoreModel):
 
 
 class ImageGetResponse(CoreModel):
-    detail: str = "Image successfully download"
+    detail: str = "Image successfully downloaded"
     class Config:
         orm_mode = True          
