@@ -1,4 +1,4 @@
-from pydantic import validator
+from pydantic import validator, constr
 
 from .core import CoreModel
 
@@ -16,7 +16,7 @@ class CommentBase(CoreModel):
 
 
 class CommentUpdate(CommentBase):
-    done: bool
+    data: str
 
 
 class CommentResponse(CommentBase):
