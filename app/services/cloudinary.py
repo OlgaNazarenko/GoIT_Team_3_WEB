@@ -1,5 +1,5 @@
 import uuid
-from typing import BinaryIO
+from typing import BinaryIO,  Optional
 
 import cloudinary
 from cloudinary.api import resource
@@ -30,10 +30,26 @@ def upload_image(file: BinaryIO) -> str:
     return file_id
 
 
-def get_format_image(file_id: str, width: int = 250, height: int = 250, crop: str = 'fill'):
-    return cloudinary.CloudinaryImage(file_id).build_url(
-        width=width,
-        height=height,
-        crop=crop,
-        version=resource(file_id)['version']
-    )
+def get_format_image(file_id: str, width: int = 250, height: int = 250, crop: str = 'fill') -> Optional[str]:
+    """
+    The get_format_image function takes a file_id, width, height and crop as parameters.
+    The function returns the url of an image with the given dimensions and cropping mode.
+
+
+    :param file_id: str: Identify the image in cloudinary
+    :param width: int: Set the width of the image
+    :param height: int: Set the height of the image
+    :param crop: str: Crop the image
+    :return: The url of the image with the specified width, height and crop
+    """
+    try:
+        url = cloudinary.CloudinaryImage(file_id).build_url(
+            width=width,
+            height=height,
+            crop=crop,
+            version=resource(file_id)['version']
+        )
+    except cloudinary.exceptions.Error as e:
+        return
+
+    return url
