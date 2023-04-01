@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +46,11 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
     :return: The dowload image
     """
     if current_user:
+        
         loop = asyncio.get_event_loop()
+        try:
+            url = await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Url does not exist")
 
-        return await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
+        return url
