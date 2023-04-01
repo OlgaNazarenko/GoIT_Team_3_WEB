@@ -5,6 +5,7 @@ from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
+from app.database.models import User
 from app.schemas.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
 from app.repository import users as repository_users
 from app.services.auth import auth_service
@@ -69,6 +70,23 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
     await repository_users.update_token(user, refresh_token, db)
 
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+@router.get("/logout", status_code=status.HTTP_401_UNAUTHORIZED)
+async def logout(request: Request, current_user: User = Depends(auth_service.get_current_user)):
+    """
+    The logout function is used to logout a user.
+    It takes in the request object and the current_user, which is obtained from the auth_service.get_current_user function.
+    The access token of this user is then added to our blacklist so that it cannot be used again.
+
+    :param request: Request: Get the authorization header from the request
+    :param current_user: User: Get the current user from the database
+    :return: A message saying that the logout was successful
+    """
+    access_token = request.headers['Authorization'].split(' ', maxsplit=1)[1]
+    await auth_service.add_access_token_to_blacklist(access_token)
+
+    return {"detail": "Successful exit"}
 
 
 @router.get('/refresh_token', response_model=TokenResponse)

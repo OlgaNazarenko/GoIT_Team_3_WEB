@@ -43,6 +43,10 @@ async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(ge
     """
     loop = asyncio.get_event_loop()
     file_id = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
+
+    if file_id is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
+
     avatar_url = await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
 
     return await repository_users.update_avatar(current_user.id, avatar_url, db)

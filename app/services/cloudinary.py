@@ -1,5 +1,7 @@
 import uuid
-from typing import BinaryIO,  Optional
+
+from typing import BinaryIO, Optional
+
 
 import cloudinary
 from cloudinary.api import resource

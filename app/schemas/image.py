@@ -12,7 +12,6 @@ class ImageBase(CoreModel):
     """
     url: str = Field(..., alias='uuid')
     description: str
-    created_at: str
     user_id: str
 
     @validator('url', pre=True, allow_reuse=True)
@@ -22,7 +21,6 @@ class ImageBase(CoreModel):
         url = f"{settings.cloudinary_name}/upload/{version}/{file_id}"
 
         return urljoin(cloudinary_base_url, url)
-
 
 
 class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):
