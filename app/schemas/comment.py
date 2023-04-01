@@ -23,7 +23,7 @@ class CommentResponse(CommentBase):
     id: int = 1
     user_id: int = 1
     image_id: int = 1
-    data: constr(min_length = 10, max_length = 350) = "This is a comment"
+    data: str = "This is a comment"
 
     class Config:
         orm_mode = True
