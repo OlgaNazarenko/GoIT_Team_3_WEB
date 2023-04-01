@@ -31,6 +31,11 @@ class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):
 class ImageCreateResponse(CoreModel):
     image: ImagePublic
     detail: str = "Image successfully created"
-    
     class Config:
         orm_mode = True
+
+
+class ImageGetResponse(CoreModel):
+    detail: str = "Image successfully download"
+    class Config:
+        orm_mode = True          
