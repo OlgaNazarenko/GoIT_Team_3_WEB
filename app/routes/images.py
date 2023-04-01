@@ -69,7 +69,7 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
     """
     The dowload_image function dowloads the image from Cloudinary.
 
-    :param file_id: str: Get the file_url to dowload
+    :param file_id: str: Get the file_url to download
     :return: image url
     """
     if current_user:
