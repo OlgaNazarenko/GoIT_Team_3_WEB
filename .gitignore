@@ -1,6 +1,6 @@
 config.ini
 .idea/
 .env
-.env-my
+.env_my
 __pycache__/
 node_modules/
