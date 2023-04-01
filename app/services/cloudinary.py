@@ -15,7 +15,7 @@ cloudinary.config(
 )
 
 
-def upload_image(file: BinaryIO) -> str:
+def upload_image(file: BinaryIO) -> Optional[str]:
     """
     The upload_image function takes a file object and uploads it to Cloudinary.
     It returns the public ID of the uploaded image.
@@ -25,7 +25,10 @@ def upload_image(file: BinaryIO) -> str:
     """
     file_id = settings.cloudinary_folder + uuid.uuid4().hex
 
-    upload(file, public_id=file_id, owerwrite=True)
+    try:
+        upload(file, public_id=file_id, owerwrite=True)
+    except cloudinary.exceptions.Error as e:
+        return
 
     return file_id
 
