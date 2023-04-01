@@ -1,10 +1,12 @@
-from pydantic import BaseModel, validator, constr
+from pydantic import validator
+
+from .core import CoreModel
 
 
-class CommentBase(BaseModel):
+class CommentBase(CoreModel):
     user_id: int
     image_id: int
-    data: constr(min_length=10, max_length=350)
+    data: str
 
     @validator('data')
     def text_must_not_be_empty(cls, value):
