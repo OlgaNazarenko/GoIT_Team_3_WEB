@@ -33,30 +33,22 @@ async def create_comment(user: User, body: CommentBase, db: AsyncSession) -> Com
     return comment
 
 
-async def get_comments_by_image_user_id(user: User,
-                                        image_id: int | None,
-                                        user_id: int | None,
-                                        skip: int,
-                                        limit: int,
-                                        db: AsyncSession) -> List[Comment]:
-
+async def get_comments_by_image_and_user_id(user: User, image_id: int, user_id: int, skip: int, limit: int,
+                                            db: AsyncSession) -> List[Comment]:
     """
-    The get_comments_by_image_user_id function returns a list of comments for the given image_id and user_id.
-        The function takes in an image id, user id, skip value (for pagination), limit value (for pagination), and db session.
-        It then queries the database for all comments that match either the given image or user ids.
-        It then returns a list of those comments.
+    The get_comments_by_image_and_user_id function returns a list of comments for the given image and user.
 
-    :param user: User: Get the user id of the current user
-    :param image_id: int | None: Filter the comments by image_id
-    :param user_id: int | None: Filter the comments by user_id
-    :param skip: int: Skip a number of comments in the database
+    :param user: User: Check if the user is logged in
+    :param image_id: int: Specify the image id of the comment
+    :param user_id: int: Get the comments of a specific user
+    :param skip: int: Skip the first n comments
     :param limit: int: Limit the number of comments returned
-    :param db: AsyncSession: Pass in the database session
-    :return: A list of comments
+    :param db: AsyncSession: Pass in the database session to use
+    :return: A list of comments that match the image_id and user_id
     """
     comments = await db.execute(
         select(Comment)
-        .where(and_(or_(Comment.image_id == image_id, Comment.user_id == user_id)))
+        .where(and_(Comment.image_id == image_id, Comment.user_id == user_id))
         .offset(skip)
         .limit(limit)
     )
