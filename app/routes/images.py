@@ -11,7 +11,6 @@ from app.schemas.image import (
     ImageCreateResponse,
     ImageGetResponse,
     ImagePublic,
-    DescriptionModel
 )
 from app.services import cloudinary
 from app.services.auth import auth_service
@@ -64,20 +63,21 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
     return url
 
 
-@router.put("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def update_description(body: DescriptionModel, db: AsyncSession = Depends(get_db),
+@router.put("/description/", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_description(uuid: str, description: str = Form(min_length=10, max_length=1200), db: AsyncSession = Depends(get_db),
                        current_user: User = Depends(auth_service.get_current_user)):
     """
     The update_description function updates the description of a image.
         The function takes in an DescriptionModel object, which contains the new description to be updated.
         It also takes in a database session and current_user (the user who is making this request).
 
-    :param body: DescriptionModel: Get the description from the request body
+    :param uuid: str: Get the unique link from the request      
+    :param description: Form: Get the description from the request
     :param db: AsyncSession: Get the database session
     :param current_user: User: Get the current user from the database
     :return: An image object
     """
-    updated_image = await repository_images.update_description(current_user.id, body.uuid, body.description, db)
+    updated_image = await repository_images.update_description(current_user.id, uuid, description, db)
         
     if updated_image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid Url")
