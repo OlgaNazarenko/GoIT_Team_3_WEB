@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import Image
 from sqlalchemy import update, and_
 from typing import Optional
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
 
 async def create_image(user_id: int, description: str, uuid: str, db: AsyncSession) -> Image:
@@ -38,15 +39,18 @@ async def update_description(user_id: int, uuid: str, description: str, db: Asyn
     :param db: AsyncSession: Pass in the database session to the function
     :return: An image object
     """
-    async with db.begin():
-        image = await db.scalar(
-            update(Image)
-            .values(description=description)
-            .filter(and_(Image.user_id == user_id, Image.uuid == uuid))
-            .returning(Image)
-        )
-        await db.commit()
+    try:
+        async with db.begin():
+            image = await db.scalar(
+                update(Image)
+                .values(description=description)
+                .filter(and_(Image.user_id == user_id, Image.uuid == uuid))
+                .returning(Image)
+            )
+            await db.commit()
+        await db.refresh(image)
 
-    await db.refresh(image)
+    except UnmappedInstanceError:
+        ...        
 
     return image
