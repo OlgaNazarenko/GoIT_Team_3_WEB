@@ -63,12 +63,12 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
     return url
 
 
-@router.put("/description/", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+@router.put("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def update_description(uuid: str, description: str = Form(min_length=10, max_length=1200), db: AsyncSession = Depends(get_db),
                        current_user: User = Depends(auth_service.get_current_user)):
     """
-    The update_description function updates the description of a image.
-        The function takes in an DescriptionModel object, which contains the new description to be updated.
+    The update_description function updates the description of an image.
+        The function takes in the description to be updated.
         It also takes in a database session and current_user (the user who is making this request).
 
     :param uuid: str: Get the unique link from the request      
@@ -80,6 +80,6 @@ async def update_description(uuid: str, description: str = Form(min_length=10, m
     updated_image = await repository_images.update_description(current_user.id, uuid, description, db)
         
     if updated_image is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid Url")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid identifier")
 
     return updated_image
