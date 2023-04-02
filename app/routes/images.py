@@ -9,7 +9,9 @@ from app.database.models import User
 from app.repository import images as repository_images
 from app.schemas.image import (
     ImageCreateResponse,
-    ImageGetResponse
+    ImageGetResponse,
+    ImagePublic,
+    DescriptionModel
 )
 from app.services import cloudinary
 from app.services.auth import auth_service
@@ -45,7 +47,6 @@ async def upload_image(file: UploadFile = File(), description: str = Form(min_le
     return {"image": image, "detail": "Image successfully created"}
 
 
-
 @router.get("/", response_model=ImageGetResponse, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def dowload_image(file_id: str, current_user: User = Depends(auth_service.get_current_user)):
     """
@@ -61,3 +62,24 @@ async def dowload_image(file_id: str, current_user: User = Depends(auth_service.
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Url does not exist")
 
     return url
+
+
+@router.put("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_description(body: DescriptionModel, db: AsyncSession = Depends(get_db),
+                       current_user: User = Depends(auth_service.get_current_user)):
+    """
+    The update_description function updates the description of a image.
+        The function takes in an DescriptionModel object, which contains the new description to be updated.
+        It also takes in a database session and current_user (the user who is making this request).
+
+    :param body: DescriptionModel: Get the description from the request body
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the current user from the database
+    :return: An image object
+    """
+    updated_image = await repository_images.update_description(current_user.id, body.uuid, body.description, db)
+        
+    if updated_image is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid Url")
+
+    return updated_image

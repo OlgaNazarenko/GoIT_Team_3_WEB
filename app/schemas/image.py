@@ -1,6 +1,6 @@
 from urllib.parse import urljoin
 
-from pydantic import Field, validator
+from pydantic import Field, validator, constr
 
 from config import settings
 from .core import CoreModel, IDModelMixin, DateTimeModelMixin
@@ -38,4 +38,9 @@ class ImageCreateResponse(CoreModel):
 class ImageGetResponse(CoreModel):
     detail: str = "Image successfully downloaded"
     class Config:
-        orm_mode = True          
+        orm_mode = True
+
+
+class DescriptionModel(CoreModel):
+    uuid: str
+    description: constr(min_length=10, max_length=1200)                  
