@@ -9,7 +9,6 @@ from app.database.models import User
 from app.repository import images as repository_images
 from app.schemas.image import (
     ImageCreateResponse,
-    ImageGetResponse,
     ImagePublic,
 )
 from app.services import cloudinary
