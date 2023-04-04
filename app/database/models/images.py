@@ -28,7 +28,7 @@ class Image(Base):
     __tablename__ = 'images'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    uuid: Mapped[str] = mapped_column(String(255))
+    public_id: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(String(1200))
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now())

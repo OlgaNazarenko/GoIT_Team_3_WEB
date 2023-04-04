@@ -1,11 +1,12 @@
+import asyncio
 import uuid
+import enum
 
 from typing import BinaryIO, Optional
 
-
 import cloudinary
-from cloudinary.api import resource
 from cloudinary.uploader import upload
+from pydantic import BaseModel
 
 from config import settings
 
@@ -17,44 +18,133 @@ cloudinary.config(
 )
 
 
-def upload_image(file: BinaryIO) -> Optional[str]:
+class CropMode(enum.StrEnum):
     """
-    The upload_image function takes a file object and uploads it to Cloudinary.
-    It returns the public ID of the uploaded image.
+    Enum representing different modes of cropping
 
-    :param file: BinaryIO: Pass the file to be uploaded
-    :return: A string
+    If the requested dimensions have a different aspect ratio than the original, these modes crop out part of the image.
     """
-    file_id = settings.cloudinary_folder + uuid.uuid4().hex
+    FILL = 'fill'
+    """Resizes the image to fill the specified dimensions without distortion. The image may be cropped as a result."""
+    IFILL = 'ifill'
+    """Same as fill, but only scales down the image."""
+    FILL_PAD = 'fill_pad'
+    """Same as fill, but avoids excessive cropping by adding padding when needed. Supported only with automatic 
+    cropping."""
+    CROP = 'crop'
+    """Extracts a region of the specified dimensions from the original image without first resizing it."""
+    THUMB = 'thumb'
+    """
+    Creates a thumbnail of the image with the specified dimensions, based on a specified gravity. Scaling may occur.
+    """
 
+    """These modes adjust the size and/or crop the image using an add-on."""
+    IMAGGA_SCALA = 'imagga_scala'
+    """Performs smart scaling, using the Imagga Crop and Scale add-on."""
+    IMAGGA_CROP = 'imagga_crop'
+    """Performs smart cropping, using the Imagga Crop and Scale add-on."""
+
+
+class ResizeMode(enum.StrEnum):
+    """
+    Enum representing different modes of resizing
+
+    These modes adjust the size of the delivered image without cropping out any elements of the original image.
+    """
+    SCALE = 'scale'
+    """Resizes the image to the specified dimensions without necessarily retaining the original aspect ratio."""
+    FIT = 'fit'
+    """Resizes the image to fit inside the bounding box specified by the dimensions, maintaining the aspect ratio."""
+    LIMIT = 'limit'
+    """Same as fit, but only scales down the image."""
+    M_FIT = 'm_fit'
+    """Same as fit, but only scales up the image."""
+    PAD = 'pad'
+    """Resizes the image to fit inside the bounding box specified by the dimensions, maintaining the aspect ratio, 
+    and applies padding if the resized image does not fill the whole area."""
+    IPAD = 'ipad'
+    """Same as pad, but only scales down the image."""
+    MPAD = 'mpad'
+    """Same as pad, but only scales up the image."""
+
+    """These modes adjust the size and/or crop the image using an add-on."""
+    IMAGGA_SCALA = 'imagga_scala'
+    """Performs smart scaling, using the Imagga Crop and Scale add-on."""
+    IMAGGA_CROP = 'imagga_crop'
+    """Performs smart cropping, using the Imagga Crop and Scale add-on."""
+
+
+class GravityMode(enum.StrEnum):
+    """Enum representing the gravity of the cropped image"""
+    CENTER = 'center'
+    NORTH = 'north'
+    NORTH_WEST = 'north_west'
+    NORTH_EAST = 'north_east'
+    SOUTH = 'south'
+    SOUTH_WEST = 'south_west'
+    SOUTH_EAST = 'south_east'
+    WEST = 'west'
+    EAST = 'east'
+
+
+class CroppingOrResizingTransformation(BaseModel):
+    """Model representing the parameters for cropping or resizing an image"""
+    width: Optional[int] = None
+    height: Optional[int] = None
+    crop: Optional[CropMode | ResizeMode] = None
+    gravity: Optional[GravityMode] = None
+
+
+def upload_image(file: BinaryIO, public_id: Optional[str] = None) -> Optional[dict]:
+    """
+    The upload_image function uploads an image to Cloudinary.
+
+    :param file: BinaryIO: Pass the image file to be uploaded
+    :param public_id: Optional[str]: Set a custom name for the image
+    :return: A tuple of three values:
+    """
     try:
-        upload(file, public_id=file_id, owerwrite=True)
-    except cloudinary.exceptions.Error as e:
-        return
-
-    return file_id
-
-
-def get_format_image(file_id: str, width: int = 250, height: int = 250, crop: str = 'fill') -> Optional[str]:
-    """
-    The get_format_image function takes a file_id, width, height and crop as parameters.
-    The function returns the url of an image with the given dimensions and cropping mode.
-
-
-    :param file_id: str: Identify the image in cloudinary
-    :param width: int: Set the width of the image
-    :param height: int: Set the height of the image
-    :param crop: str: Crop the image
-    :return: The url of the image with the specified width, height and crop
-    """
-    try:
-        url = cloudinary.CloudinaryImage(file_id).build_url(
-            width=width,
-            height=height,
-            crop=crop,
-            version=resource(file_id)['version']
+        image = cloudinary.uploader.upload_image(
+            file=file,
+            public_id=public_id or uuid.uuid4().hex,
+            folder=settings.cloudinary_folder,
+            owerwrite=True,
         )
-    except cloudinary.exceptions.Error as e:
+    except cloudinary.exceptions.Error:
         return
 
-    return url
+    return {'url': image.url, 'public_id': image.public_id, 'version': image.version}
+
+
+def formatting_image(public_id: str,
+                     transformation: Optional[CroppingOrResizingTransformation | dict] = None,
+                     version: Optional[str] = None) -> Optional[dict]:
+    """
+    The formatting_image function takes in a file_id, version, and transformation.
+    The function then returns the url of the image with the specified transformation applied to it.
+
+    :param public_id: str: Specify the public_id of the image
+    :param transformation: Optional[CroppingTransformation | ResizingTransformation]: Specify the type of transformation to be applied on the image
+    :param version: Optional[str]: Specify the version of the image to be used
+    :return: A dictionary with the transformation parameters
+    """
+    if isinstance(transformation, CroppingOrResizingTransformation):
+        transformation = transformation.dict()
+
+    try:
+        image = cloudinary.CloudinaryImage(
+            public_id=public_id,
+            version=version,
+            url_options=transformation
+        )
+    except cloudinary.exceptions.Error:
+        return
+
+    return {'url': image.url, 'format': image.url_options}
+
+
+FORMAT_AVATAR = CroppingOrResizingTransformation(
+    crop=CropMode.FILL,
+    width=250,
+    height=250,
+)
