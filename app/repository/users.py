@@ -154,7 +154,7 @@ async def update_email(user_id: int, email: str, db: AsyncSession) -> Optional[U
     except IntegrityError as e:
         return
 
-    # await db.refresh(user)
+    await db.refresh(user)
 
     return user
 

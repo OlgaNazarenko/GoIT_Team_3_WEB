@@ -7,16 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.connect import get_db
 from app.database.models import User
 from app.repository import images as repository_images
-from app.repository import image_formats as repository_image_formats
 from app.schemas.image import (
     ImageCreateResponse,
-    ImageTransformation,
     ImagePublic,
-    FormattedImageCreateResponse,
-    ImageFormatsResponse,
 )
 from app.services import cloudinary
 from app.services.auth import auth_service
+
 
 router = APIRouter(prefix="/images", tags=["images"])
 
@@ -67,55 +64,3 @@ async def get_image(image_id: int, current_user: User = Depends(auth_service.get
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
     return image
-
-
-@router.post(
-    '/format', response_model=FormattedImageCreateResponse,
-    response_model_by_alias=False,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def formatting_image(body: ImageTransformation, current_user: User = Depends(auth_service.get_current_user),
-                           db: AsyncSession = Depends(get_db)):
-    """
-    The formatting_image function is used to format the image.
-        Args:
-            body (ImageTransformation): The ImageTransformation object that contains the id of the image and transformation.
-            current_user (User): The User object that contains information about user who sent request.
-
-    :param body: ImageTransformation: Receive the data from the request body
-    :param current_user: User: Get the user who is currently logged in
-    :param db: AsyncSession: Get the database session
-    :return: The url of the image with the transformation applied
-    """
-    image = await repository_images.get_image_by_id(current_user.id, body.image_id, db)
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
-
-    format_image = cloudinary.formatting_image(image.public_id, body.transformation)
-
-    image_id = image.id
-
-    formatted_image = await repository_image_formats.create_image_format(
-        current_user.id, image_id, format_image['format'], db
-    )
-    if formatted_image is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This image already has this formatting")
-
-    formatted_image.format = format_image['url']
-
-    return {"original_image_id": image_id, "formatted_image": formatted_image, "detail": "Image successfully formatted"}
-
-
-@router.get('/format/{image_id}', response_model=ImageFormatsResponse, response_model_by_alias=True)
-async def get_image_formats(image_id: int, current_user: User = Depends(auth_service.get_current_user),
-                            db: AsyncSession = Depends(get_db)):
-    image = await repository_images.get_image_by_id(current_user.id, image_id, db)
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
-
-    image_formats = await repository_image_formats.get_image_formats_by_image_id(current_user.id, image_id, db)
-
-    for image_format in image_formats:
-        image_format.format = cloudinary.formatting_image(image.public_id, image_format.format)['url']
-
-    return {"original_image": image, "formatted_images": image_formats}

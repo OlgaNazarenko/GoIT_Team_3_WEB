@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import JSON, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .base import Base
 from .users import User
