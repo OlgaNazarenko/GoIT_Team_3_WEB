@@ -1,11 +1,11 @@
 from typing import Optional
 
-from sqlalchemy import select, update, or_
+from sqlalchemy import select, update, or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import User
-from app.schemas.user import UserCreate
+from app.database.models import User, Image
+from app.schemas.user import UserCreate, ProfileUpdate
 from app.services.gravatar import get_gravatar
 
 
@@ -58,6 +58,21 @@ async def get_user_by_email_or_username(email: str, username: str, db: AsyncSess
         select(User)
         .filter(or_(User.email == email, User.username == username))
     )
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User:
+
+    """
+    The get_user_by_username function returns a user object from the database based on the username.
+
+    :param db: AsyncSession: Pass in the database session
+    :param username: str: Filter the query
+    :return: A user object
+    """
+    return await db.scalar(
+                select(User)
+                .filter(User.username == username)
+            )
 
 
 async def get_user_by_id(user_id: int, db: AsyncSession) -> Optional[User]:
@@ -169,3 +184,83 @@ async def confirmed_email(user: User, db: AsyncSession) -> None:
     """
     user.email_verified = True
     await db.commit()
+
+
+async def get_num_photos_by_user(user_id: int, db: AsyncSession) -> int:
+    """
+    The get_num_photos_by_user function returns the number of photos a user has uploaded to the database.
+
+    :param user_id: int: Specify the user_id of the user whose photos we want to count
+    :param db: AsyncSession: Pass the database connection to the function
+    :return: The number of photos a user has
+    """
+    num_photos = await db.scalar(
+        select(func.count(Image.id))
+        .filter(Image.user_id == user_id)
+    )
+
+    return num_photos
+
+
+async def update_user_profile(body: ProfileUpdate, user_id: int, db: AsyncSession) -> User:
+    """
+    The update_user_profile function updates a user's profile information.
+
+    :param body: ProfileUpdate: Get the data from the request body
+    :param user_id: int: Identify the user to update
+    :param db: AsyncSession: Pass in the database session
+    :return: A user object
+    """
+    user = await db.scalar(
+        update(User)
+        .where(User.id == user_id)
+        .values(**body.dict())
+        .returning(User)
+    )
+
+    await db.commit()
+
+    await db.refresh(user)
+
+    return user
+
+
+async def partial_update_user_profile(db: AsyncSession,
+                                      user_id: int,
+                                      username: str = None,
+                                      first_name: str = None,
+                                      last_name: str = None
+                                      ) -> User:
+    """
+    The partial_update_user_profile function updates a user's profile information.
+        Args:
+            db (AsyncSession): The database session to use for the update.
+            user_id (int): The id of the user whose profile is being updated.
+            username (str, optional): A new username for the user. Defaults to None if not provided by caller.
+                If None, then no change will be made to this field in the database record for this User object instance..
+
+    :param db: AsyncSession: Pass in the database session
+    :param user_id: int: Identify the user that we want to update
+    :param username: str: Update the username of a user
+    :param first_name: str: Pass in the new first name of the user
+    :param last_name: str: Update the last name of a user
+    :return: A user object
+    """
+    update_data = {}
+
+    if username is not None:
+        update_data['username'] = username
+    if first_name is not None:
+        update_data['first_name'] = first_name
+    if last_name is not None:
+        update_data['last_name'] = last_name
+
+    user = await get_user_by_id(user_id, db)
+
+    for field, value in update_data.items():
+        setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user

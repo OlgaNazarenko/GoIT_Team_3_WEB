@@ -34,6 +34,19 @@ class UserCreateResponse(CoreModel):
     detail: str = "User successfully created"
 
 
+class UserProfile(UserPublic):
+    num_photos: int
+
+    class Config:
+        orm_mode = True
+
+
+class ProfileUpdate(CoreModel):
+    username: str
+    first_name: str
+    last_name: str
+
+
 class TokenResponse(CoreModel):
     access_token: str
     refresh_token: str
