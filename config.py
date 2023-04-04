@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     cloudinary_name: str
     cloudinary_api_key: int
     cloudinary_api_secret: str
-    cloudinary_folder: str = "media/"
+    cloudinary_folder: str = "media"
 
     class Config:
         env_file = BASE_DIR / '.env'

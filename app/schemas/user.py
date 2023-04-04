@@ -1,4 +1,4 @@
-from pydantic import EmailStr, constr, Field
+from pydantic import EmailStr, constr
 
 from .core import DateTimeModelMixin, IDModelMixin, CoreModel
 

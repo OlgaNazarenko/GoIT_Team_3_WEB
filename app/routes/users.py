@@ -42,14 +42,16 @@ async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(ge
     :return: The updated user object
     """
     loop = asyncio.get_event_loop()
-    file_id = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
+    image = await loop.run_in_executor(
+        None, cloudinary.upload_image, file.file, current_user.avatar.rsplit('/', maxsplit=1)[1]
+    )
 
-    if file_id is None:
+    if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
 
-    avatar_url = await loop.run_in_executor(None, cloudinary.get_format_image, file_id)
+    avatar = cloudinary.formatting_image(image['public_id'], cloudinary.FORMAT_AVATAR, image['version'])
 
-    return await repository_users.update_avatar(current_user.id, avatar_url, db)
+    return await repository_users.update_avatar(current_user.id, avatar['url'], db)
 
 
 @router.patch("/email", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=2, seconds=60))])
@@ -74,7 +76,7 @@ async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
     return updated_user
 
 
-@router.patch("/password", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=2, seconds=60))])
+@router.patch("/password", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=200, seconds=60))])
 async def update_password(body: UserPasswordUpdate, db: AsyncSession = Depends(get_db),
                           current_user: User = Depends(auth_service.get_current_user)):
     """
