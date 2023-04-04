@@ -64,3 +64,26 @@ async def get_image(image_id: int, current_user: User = Depends(AuthService.get_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
     return image
+
+
+@router.put("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_description(image_id: int, description: str = Form(min_length=10, max_length=1200),
+                             db: AsyncSession = Depends(get_db),
+                             current_user: User = Depends(AuthService.get_current_user)):
+    """
+    The update_description function updates the description of an image.
+        The function takes in the description to be updated.
+        It also takes in a database session and current_user (the user who is making this request).
+
+    :param image_id: int: Get the unique link from the request
+    :param description: Form: Get the description from the request
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the current user from the database
+    :return: An image object
+    """
+    updated_image = await repository_images.update_description(current_user.id, image_id, description, db)
+
+    if updated_image is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid identifier")
+
+    return updated_image

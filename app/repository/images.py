@@ -1,6 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import Image
+from sqlalchemy import update, and_
+from typing import Optional
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
 
 async def get_image_by_id(user_id: int, image_id: int, db: AsyncSession) -> Image:
@@ -38,5 +41,32 @@ async def create_image(user_id: int, description: str, public_id: str, db: Async
     await db.commit()
 
     await db.refresh(image)
+
+    return image
+
+
+async def update_description(user_id: int, public_id: str, description: str, db: AsyncSession) -> Optional[Image]:
+    """
+    The create_image function creates a new image in the database.
+
+    :param current_user: int: Get the current user
+    :param description: str: Get description for image
+    :param public_id: str: Get hash for image
+    :param db: AsyncSession: Pass in the database session to the function
+    :return: An image object
+    """
+    try:
+        async with db.begin():
+            image = await db.scalar(
+                update(Image)
+                .values(description=description)
+                .filter(and_(Image.user_id == user_id, Image.public_id == public_id))
+                .returning(Image)
+            )
+            await db.commit()
+        await db.refresh(image)
+
+    except UnmappedInstanceError:
+        return
 
     return image
