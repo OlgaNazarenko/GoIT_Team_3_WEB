@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 import enum
 
@@ -116,11 +115,11 @@ def upload_image(file: BinaryIO, public_id: Optional[str] = None) -> Optional[di
     return {'url': image.url, 'public_id': image.public_id, 'version': image.version}
 
 
-def formatting_image(public_id: str,
-                     transformation: Optional[CroppingOrResizingTransformation | dict] = None,
-                     version: Optional[str] = None) -> Optional[dict]:
+def formatting_image_url(public_id: str,
+                         transformation: Optional[CroppingOrResizingTransformation | dict] = None,
+                         version: Optional[str] = None) -> Optional[dict]:
     """
-    The formatting_image function takes in a file_id, version, and transformation.
+    The formatting_image_url function takes in a file_id, and transformation, version.
     The function then returns the url of the image with the specified transformation applied to it.
 
     :param public_id: str: Specify the public_id of the image
@@ -131,14 +130,11 @@ def formatting_image(public_id: str,
     if isinstance(transformation, CroppingOrResizingTransformation):
         transformation = transformation.dict()
 
-    try:
-        image = cloudinary.CloudinaryImage(
-            public_id=public_id,
-            version=version,
-            url_options=transformation
-        )
-    except cloudinary.exceptions.Error:
-        return
+    image = cloudinary.CloudinaryImage(
+        public_id=public_id,
+        version=version,
+        url_options=transformation
+    )
 
     return {'url': image.url, 'format': image.url_options}
 

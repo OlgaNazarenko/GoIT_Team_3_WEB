@@ -4,6 +4,14 @@ from app.database.models import Image
 
 
 async def get_image_by_id(user_id: int, image_id: int, db: AsyncSession) -> Image:
+    """
+    The get_image_by_id function returns an image from the database.
+
+    :param user_id: int: Filter the images by user_id
+    :param image_id: int: Filter the images by id
+    :param db: AsyncSession: Pass in the database session to use
+    :return: A single image object
+    """
     return await db.scalar(
         select(Image)
         .filter(Image.id == image_id, Image.user_id == user_id)

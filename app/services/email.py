@@ -2,7 +2,7 @@ from pydantic import EmailStr
 from fastapi_mail import ConnectionConfig, MessageSchema, MessageType, FastMail
 from fastapi_mail.errors import ConnectionErrors
 
-from .auth import auth_service
+from .auth import AuthService
 from config import settings, Template
 
 
@@ -35,7 +35,7 @@ async def send_email_reset_password(email: EmailStr, username: str, host: str) -
     :return: None
     """
     try:
-        token_verification = await auth_service.create_email_token({"sub": email})
+        token_verification = await AuthService.create_email_token({"sub": email})
 
         message = MessageSchema(
             subject="Reset password ",
@@ -64,7 +64,7 @@ async def send_email_confirmed(email: EmailStr, username: str, host: str) -> Non
     :return: Nothing
     """
     try:
-        token_verification = await auth_service.create_email_token({"sub": email})
+        token_verification = await AuthService.create_email_token({"sub": email})
 
         message = MessageSchema(
             subject="Confirm your email ",

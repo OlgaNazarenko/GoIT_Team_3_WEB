@@ -8,12 +8,12 @@ from app.database.connect import get_db
 from app.database.models import User
 from app.schemas.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
 from app.repository import users as repository_users
-from app.services.auth import auth_service
+from app.services.auth import AuthService
 from app.services.email import send_email_confirmed, send_email_reset_password
 from config import Template
 
 
-router = APIRouter(prefix='/auth', tags=["auth"])
+router = APIRouter(prefix='/auth', tags=["Authorization"])
 security = HTTPBearer()
 
 
@@ -37,7 +37,7 @@ async def signup(body: UserCreate, background_tasks: BackgroundTasks, request: R
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="An account with the same email address or username already exists")
 
-    body.password = auth_service.get_password_hash(body.password)
+    body.password = AuthService.get_password_hash(body.password)
     new_user = await repository_users.create_user(body, db)
 
     background_tasks.add_task(send_email_confirmed, new_user.email, new_user.username, request.base_url)
@@ -60,12 +60,12 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email")
     if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not confirmed")
-    if not auth_service.verify_password(body.password, user.password):
+    if not AuthService.verify_password(body.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
 
     # Generate JWT
-    access_token = await auth_service.create_access_token(data={"sub": user.email})
-    refresh_token = await auth_service.create_refresh_token(data={"sub": user.email})
+    access_token = await AuthService.create_access_token(data={"sub": user.email})
+    refresh_token = await AuthService.create_refresh_token(data={"sub": user.email})
 
     await repository_users.update_token(user, refresh_token, db)
 
@@ -73,18 +73,22 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
 
 
 @router.get("/logout", status_code=status.HTTP_401_UNAUTHORIZED)
-async def logout(request: Request, current_user: User = Depends(auth_service.get_current_user)):
+async def logout(request: Request, current_user: User = Depends(AuthService.get_current_user),
+                 db: AsyncSession = Depends(get_db)):
     """
     The logout function is used to logout a user.
-    It takes in the request object and the current_user, which is obtained from the auth_service.get_current_user function.
+    It takes in the request object and the current_user, which is obtained from the AuthService.get_current_user function.
     The access token of this user is then added to our blacklist so that it cannot be used again.
 
     :param request: Request: Get the authorization header from the request
     :param current_user: User: Get the current user from the database
+    :param db: AsyncSession: Get the database session
     :return: A message saying that the logout was successful
     """
     access_token = request.headers['Authorization'].split(' ', maxsplit=1)[1]
-    await auth_service.add_access_token_to_blacklist(access_token)
+    await AuthService.add_access_token_to_blacklist(access_token)
+
+    await repository_users.update_token(current_user, None, db)
 
     return {"detail": "Successful exit"}
 
@@ -101,7 +105,7 @@ async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(sec
     :return: A dictionary with the access_token, refresh_token and token type
     """
     token = credentials.credentials
-    email = await auth_service.decode_refresh_token(token)
+    email = await AuthService.decode_refresh_token(token)
     user = await repository_users.get_user_by_email(email, db)
 
     if user.refresh_token != token:
@@ -109,8 +113,8 @@ async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(sec
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
     # Generate JWT
-    access_token = await auth_service.create_access_token(data={"sub": email})
-    refresh_token = await auth_service.create_refresh_token(data={"sub": email})
+    access_token = await AuthService.create_access_token(data={"sub": email})
+    refresh_token = await AuthService.create_refresh_token(data={"sub": email})
 
     await repository_users.update_token(user, refresh_token, db)
 
@@ -130,7 +134,7 @@ async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
     :param db: AsyncSession: Access the database
     :return: A message that the email is already confirmed
     """
-    email = await auth_service.get_email_from_token(token)
+    email = await AuthService.get_email_from_token(token)
     user = await repository_users.get_user_by_email(email, db)
 
     if user is None:
@@ -181,7 +185,7 @@ async def reset_password_template(token: str, request: Request, db: AsyncSession
     :param db: AsyncSession: Pass the database session to the function
     :return: A template response object, which is a subclass of response
     """
-    email = await auth_service.get_email_from_token(token)
+    email = await AuthService.get_email_from_token(token)
     user = await repository_users.get_user_by_email(email, db)
 
     if user is None:
@@ -203,7 +207,7 @@ async def new_password(token: str, password: str = Form(...), db: AsyncSession =
     :param db: AsyncSession: Get the database session from the dependency injection container
     :return: A json object with a status field
     """
-    email = await auth_service.get_email_from_token(token)
+    email = await AuthService.get_email_from_token(token)
     user = await repository_users.get_user_by_email(email, db)
 
     if user is None:
@@ -211,7 +215,7 @@ async def new_password(token: str, password: str = Form(...), db: AsyncSession =
     if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not confirmed")
 
-    password = auth_service.get_password_hash(password)
+    password = AuthService.get_password_hash(password)
     await repository_users.update_password(user.id, password, db)
 
     return {"status": 'ok'}

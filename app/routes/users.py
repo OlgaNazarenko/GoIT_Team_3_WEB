@@ -13,14 +13,14 @@ from app.schemas.user import (
     EmailModel,
 )
 from app.services import cloudinary
-from app.services.auth import auth_service
+from app.services.auth import AuthService
 
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/me", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def get_me(current_user: User = Depends(auth_service.get_current_user)):
+async def get_me(current_user: User = Depends(AuthService.get_current_user)):
     """
     The get_me function returns the current user.
 
@@ -32,7 +32,7 @@ async def get_me(current_user: User = Depends(auth_service.get_current_user)):
 
 @router.patch("/avatar", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(get_db),
-                        current_user: User = Depends(auth_service.get_current_user)):
+                        current_user: User = Depends(AuthService.get_current_user)):
     """
     The update_avatar function updates the avatar of a user.
 
@@ -49,14 +49,14 @@ async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(ge
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
 
-    avatar = cloudinary.formatting_image(image['public_id'], cloudinary.FORMAT_AVATAR, image['version'])
+    avatar = cloudinary.formatting_image_url(image['public_id'], cloudinary.FORMAT_AVATAR, image['version'])
 
     return await repository_users.update_avatar(current_user.id, avatar['url'], db)
 
 
 @router.patch("/email", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=2, seconds=60))])
 async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
-                       current_user: User = Depends(auth_service.get_current_user)):
+                       current_user: User = Depends(AuthService.get_current_user)):
     """
     The update_email function updates the email of a user.
         The function takes in an EmailModel object, which contains the new email address to be updated.
@@ -78,7 +78,7 @@ async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
 
 @router.patch("/password", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=200, seconds=60))])
 async def update_password(body: UserPasswordUpdate, db: AsyncSession = Depends(get_db),
-                          current_user: User = Depends(auth_service.get_current_user)):
+                          current_user: User = Depends(AuthService.get_current_user)):
     """
     The update_password function takes in a ChangePassword object, which contains the old and new passwords.
     It then verifies that the old password is correct, hashes the new password, and updates it in the database.
@@ -88,9 +88,9 @@ async def update_password(body: UserPasswordUpdate, db: AsyncSession = Depends(g
     :param current_user: User: Get the user that is currently logged in
     :return: A dictionary with the following keys:
     """
-    if not auth_service.verify_password(body.old_password, current_user.password):
+    if not AuthService.verify_password(body.old_password, current_user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid old password")
 
-    password = auth_service.get_password_hash(body.new_password)
+    password = AuthService.get_password_hash(body.new_password)
 
     return await repository_users.update_password(current_user.id, password, db)
