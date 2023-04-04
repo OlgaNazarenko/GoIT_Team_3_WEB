@@ -1,7 +1,7 @@
 from pydantic import utils, root_validator
 
 from .core import CoreModel, IDModelMixin, DateTimeModelMixin
-from app.services.cloudinary import formatting_image
+from app.services.cloudinary import formatting_image_url
 
 
 class ImageBase(CoreModel):
@@ -20,7 +20,7 @@ class ImageBase(CoreModel):
 
     @staticmethod
     def format_url(public_id: str):
-        return formatting_image(public_id)['url']
+        return formatting_image_url(public_id)['url']
 
 
 class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):

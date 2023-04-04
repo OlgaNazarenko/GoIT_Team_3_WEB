@@ -12,10 +12,10 @@ from app.schemas.image import (
     ImagePublic,
 )
 from app.services import cloudinary
-from app.services.auth import auth_service
+from app.services.auth import AuthService
 
 
-router = APIRouter(prefix="/images", tags=["images"])
+router = APIRouter(prefix="/images", tags=["Images"])
 
 
 @router.post(
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/images", tags=["images"])
 )
 async def upload_image(file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
                        db: AsyncSession = Depends(get_db),
-                       current_user: User = Depends(auth_service.get_current_user)):
+                       current_user: User = Depends(AuthService.get_current_user)):
     """
     The upload_image function is used to upload an image to the cloudinary server.
     The function takes in a file, description and database session as parameters.
@@ -49,7 +49,7 @@ async def upload_image(file: UploadFile = File(), description: str = Form(min_le
 
 
 @router.get("/{image_id}", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=10))])
-async def get_image(image_id: int, current_user: User = Depends(auth_service.get_current_user),
+async def get_image(image_id: int, current_user: User = Depends(AuthService.get_current_user),
                     db: AsyncSession = Depends(get_db)):
     """
     The get_image function returns an image by its id.

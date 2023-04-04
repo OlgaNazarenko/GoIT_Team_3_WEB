@@ -12,10 +12,10 @@ from app.schemas.image_formats import (
     ImageFormatsResponse,
 )
 from app.services import cloudinary
-from app.services.auth import auth_service
+from app.services.auth import AuthService
 
 
-router = APIRouter(prefix="/formats", tags=["image formats"])
+router = APIRouter(prefix="/images/formats", tags=["Image formats"])
 
 
 @router.post(
@@ -24,13 +24,13 @@ router = APIRouter(prefix="/formats", tags=["image formats"])
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def formatting_image(body: ImageTransformation,
-                           current_user: User = Depends(auth_service.get_current_user),
+                           current_user: User = Depends(AuthService.get_current_user),
                            db: AsyncSession = Depends(get_db)):
     """
     The formatting_image function is used to format an image.
         The function takes in the following parameters:
             - body: ImageTransformation, which contains the id of the image and a transformation string.
-            - current_user: User, which is obtained from auth_service.get_current_user(). This parameter allows us to get
+            - current_user: User, which is obtained from AuthService.get_current_user(). This parameter allows us to get
                 information about who made this request (the user). We use this information to ensure that only users with
                 access can make requests on their own images. If no user is found, then we raise a HTTPException with status code 401 (Unauthorized) and detail &quot;
 
@@ -43,7 +43,7 @@ async def formatting_image(body: ImageTransformation,
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
-    format_image = cloudinary.formatting_image(image.public_id, body.transformation)
+    format_image = cloudinary.formatting_image_url(image.public_id, body.transformation)
 
     formatted_image = await repository_image_formats.create_image_format(
         current_user.id, body.image_id, format_image['format'], db
@@ -61,7 +61,7 @@ async def formatting_image(body: ImageTransformation,
 
 
 @router.get('/{image_id}', response_model=ImageFormatsResponse, response_model_by_alias=False)
-async def get_image_formats(image_id: int, current_user: User = Depends(auth_service.get_current_user),
+async def get_image_formats(image_id: int, current_user: User = Depends(AuthService.get_current_user),
                             db: AsyncSession = Depends(get_db)):
     """
     The get_image_formats function returns a list of formatted images for the given image_id.
@@ -81,3 +81,9 @@ async def get_image_formats(image_id: int, current_user: User = Depends(auth_ser
         image_format.public_id = image.public_id
 
     return {"parent_image": image, "formatted_images": image_formats}
+
+
+@router.get('/qr-code/{image_format_id}')
+async def get_image_format_qrcode(image_format_id: int, current_user: User = Depends(AuthService.get_current_user),
+                                  db: AsyncSession = Depends(get_db)):
+    return "QR"

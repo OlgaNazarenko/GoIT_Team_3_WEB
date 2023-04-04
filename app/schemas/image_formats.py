@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import root_validator, utils
 
-from app.services.cloudinary import CroppingOrResizingTransformation, formatting_image
+from app.services.cloudinary import CroppingOrResizingTransformation, formatting_image_url
 from .core import CoreModel, IDModelMixin, DateTimeModelMixin
 from .image import ImagePublic
 
@@ -33,7 +33,7 @@ class FormattedImageBase(CoreModel):
 
     @staticmethod
     def format_url(public_id: str, format_: dict):
-        return formatting_image(public_id, format_)['url']
+        return formatting_image_url(public_id, format_)['url']
 
 
 class FormattedImagePublic(DateTimeModelMixin, FormattedImageBase, IDModelMixin):
