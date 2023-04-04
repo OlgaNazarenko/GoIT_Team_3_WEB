@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 
 from app.database.models import UserRole, User
-from app.services.auth import auth_service
+from app.services.auth import AuthService
 
 
 class UserRoleFilter:
@@ -18,7 +18,7 @@ class UserRoleFilter:
             raise ValueError(f"Invalid role: {role}")
         self.role = role
 
-    async def __call__(self, current_user: User = Depends(auth_service.get_current_user)) -> None:
+    async def __call__(self, current_user: User = Depends(AuthService.get_current_user)) -> None:
         """
         The __call__ function is a decorator that allows us to use the class as a function.
         It's used in this case because we want to be able to pass the current_user into it,

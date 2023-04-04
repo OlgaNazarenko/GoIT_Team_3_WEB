@@ -75,7 +75,7 @@ async def update_description(image_id: int, description: str = Form(min_length=1
         The function takes in the description to be updated.
         It also takes in a database session and current_user (the user who is making this request).
 
-    :param image_id: int: Get the unique link from the request      
+    :param image_id: int: Get the unique link from the request
     :param description: Form: Get the description from the request
     :param db: AsyncSession: Get the database session
     :param current_user: User: Get the current user from the database
