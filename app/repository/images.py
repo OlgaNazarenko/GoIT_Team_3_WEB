@@ -29,13 +29,13 @@ async def create_image(user_id: int, description: str, uuid: str, db: AsyncSessi
     return image
 
 
-async def update_description(user_id: int, uuid: str, description: str, db: AsyncSession) -> Optional[Image]:
+async def update_description(user_id: int, public_id: str, description: str, db: AsyncSession) -> Optional[Image]:
     """
     The create_image function creates a new image in the database.
 
     :param current_user: int: Get the current user
     :param description: str: Get description for image
-    :param uuid: str: Get hash for image
+    :param public_id: str: Get hash for image
     :param db: AsyncSession: Pass in the database session to the function
     :return: An image object
     """
@@ -44,13 +44,13 @@ async def update_description(user_id: int, uuid: str, description: str, db: Asyn
             image = await db.scalar(
                 update(Image)
                 .values(description=description)
-                .filter(and_(Image.user_id == user_id, Image.uuid == uuid))
+                .filter(and_(Image.user_id == user_id, Image.public_id == public_id))
                 .returning(Image)
             )
             await db.commit()
         await db.refresh(image)
 
     except UnmappedInstanceError:
-        ...        
+        return
 
     return image
