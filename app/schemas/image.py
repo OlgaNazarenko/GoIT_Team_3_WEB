@@ -1,26 +1,26 @@
-from urllib.parse import urljoin
+from pydantic import utils, root_validator
 
-from pydantic import Field, validator, constr
-
-from config import settings
 from .core import CoreModel, IDModelMixin, DateTimeModelMixin
+from app.services.cloudinary import formatting_image_url
 
 
 class ImageBase(CoreModel):
     """
     Leaving salt from base model
     """
-    url: str = Field(..., alias='uuid')
+    url: str
     description: str
-    user_id: str
+    user_id: int
 
-    @validator('url', pre=True, allow_reuse=True)
-    def convert_from_integer_to_currency_sum(cls, file_id: str):
-        cloudinary_base_url = "https://res.cloudinary.com"
-        version = "v999999999"
-        url = f"{settings.cloudinary_name}/upload/{version}/{file_id}"
+    @root_validator(pre=True)
+    def update_model(cls, values: utils.GetterDict):
+        if 'url' not in values.keys():
+            values._obj.url = cls.format_url(values._obj.public_id)  # noqa
+        return values
 
-        return urljoin(cloudinary_base_url, url)
+    @staticmethod
+    def format_url(public_id: str):
+        return formatting_image_url(public_id)['url']
 
 
 class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):
@@ -30,12 +30,4 @@ class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):
 
 class ImageCreateResponse(CoreModel):
     image: ImagePublic
-    detail: str = "Image successfully created"
-    class Config:
-        orm_mode = True
-
-
-class ImageGetResponse(CoreModel):
-    detail: str = "Image successfully downloaded"
-    class Config:
-        orm_mode = True                 
+    detail: str = "Image successfully uploaded"
