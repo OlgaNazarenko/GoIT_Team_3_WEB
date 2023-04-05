@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     cloudinary_folder: str = "media"
 
     class Config:
-        env_file = BASE_DIR / '.env_my'
+        env_file = BASE_DIR / '.env'
 
 
 settings = Settings()
