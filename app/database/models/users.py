@@ -63,3 +63,9 @@ class User(Base):
         :param cls: Pass the class object to the function
         """
         event.listen(cls, 'before_insert', cls.__set_user_role)
+
+    def is_admin(self):
+        return self.role == UserRole.admin
+
+    def is_moderator(self):
+        return self.role == UserRole.moderator
