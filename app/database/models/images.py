@@ -7,10 +7,11 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Table,
-    Column,
+    Column, event,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from .tags import Tag
 from .base import Base
 from .users import User
 
@@ -35,4 +36,4 @@ class Image(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
 
     user: Mapped[User] = relationship(backref="images")
-    tags = relationship("Tag", secondary=image_m2m_tag, backref="images")
+    tags: Mapped[Tag] = relationship("Tag", secondary=image_m2m_tag, backref="images", lazy='joined')

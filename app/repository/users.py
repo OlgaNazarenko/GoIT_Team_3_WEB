@@ -60,8 +60,7 @@ async def get_user_by_email_or_username(email: str, username: str, db: AsyncSess
     )
 
 
-async def get_user_by_username(db: AsyncSession, username: str) -> User:
-
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
     """
     The get_user_by_username function returns a user object from the database based on the username.
 
@@ -70,9 +69,9 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User:
     :return: A user object
     """
     return await db.scalar(
-                select(User)
-                .filter(User.username == username)
-            )
+        select(User)
+        .filter(User.username == username)
+    )
 
 
 async def get_user_by_id(user_id: int, db: AsyncSession) -> Optional[User]:
@@ -202,7 +201,7 @@ async def get_num_photos_by_user(user_id: int, db: AsyncSession) -> int:
     return num_photos
 
 
-async def update_user_profile(body: ProfileUpdate, user_id: int, db: AsyncSession) -> User:
+async def update_user_profile(user_id: int, body: ProfileUpdate, db: AsyncSession) -> User:
     """
     The update_user_profile function updates a user's profile information.
 
@@ -211,56 +210,17 @@ async def update_user_profile(body: ProfileUpdate, user_id: int, db: AsyncSessio
     :param db: AsyncSession: Pass in the database session
     :return: A user object
     """
+    user_body = {key: val for key, val in body.dict().items() if val is not None}
+
     user = await db.scalar(
         update(User)
         .where(User.id == user_id)
-        .values(**body.dict())
+        .values(**user_body)
         .returning(User)
     )
 
     await db.commit()
 
-    await db.refresh(user)
-
-    return user
-
-
-async def partial_update_user_profile(db: AsyncSession,
-                                      user_id: int,
-                                      username: str = None,
-                                      first_name: str = None,
-                                      last_name: str = None
-                                      ) -> User:
-    """
-    The partial_update_user_profile function updates a user's profile information.
-        Args:
-            db (AsyncSession): The database session to use for the update.
-            user_id (int): The id of the user whose profile is being updated.
-            username (str, optional): A new username for the user. Defaults to None if not provided by caller.
-                If None, then no change will be made to this field in the database record for this User object instance..
-
-    :param db: AsyncSession: Pass in the database session
-    :param user_id: int: Identify the user that we want to update
-    :param username: str: Update the username of a user
-    :param first_name: str: Pass in the new first name of the user
-    :param last_name: str: Update the last name of a user
-    :return: A user object
-    """
-    update_data = {}
-
-    if username is not None:
-        update_data['username'] = username
-    if first_name is not None:
-        update_data['first_name'] = first_name
-    if last_name is not None:
-        update_data['last_name'] = last_name
-
-    user = await get_user_by_id(user_id, db)
-
-    for field, value in update_data.items():
-        setattr(user, field, value)
-
-    await db.commit()
     await db.refresh(user)
 
     return user

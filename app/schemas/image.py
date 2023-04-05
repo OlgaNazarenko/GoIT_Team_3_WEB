@@ -1,6 +1,7 @@
 from pydantic import utils, root_validator
 
 from .core import CoreModel, IDModelMixin, DateTimeModelMixin
+from .tag import TagResponse
 from app.services.cloudinary import formatting_image_url
 
 
@@ -10,6 +11,7 @@ class ImageBase(CoreModel):
     """
     url: str
     description: str
+    tags: list[TagResponse]
     user_id: int
 
     @root_validator(pre=True)
