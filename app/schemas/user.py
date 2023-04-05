@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import EmailStr, constr
 
 from .core import DateTimeModelMixin, IDModelMixin, CoreModel
@@ -42,9 +44,9 @@ class UserProfile(UserPublic):
 
 
 class ProfileUpdate(CoreModel):
-    username: str
-    first_name: str
-    last_name: str
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 
 class TokenResponse(CoreModel):

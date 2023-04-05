@@ -1,8 +1,8 @@
-"""Init
+"""tags
 
-Revision ID: b921f124b326
+Revision ID: c734b04dd21a
 Revises: 
-Create Date: 2023-04-04 03:46:04.324941
+Create Date: 2023-04-05 12:03:00.297034
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'b921f124b326'
+revision = 'c734b04dd21a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,6 +21,8 @@ def upgrade() -> None:
     op.create_table('tags',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -54,7 +56,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('comments',
+    op.create_table('image_comments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('data', sa.String(length=500), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -65,7 +67,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_comments_data'), 'comments', ['data'], unique=False)
+    op.create_index(op.f('ix_image_comments_data'), 'image_comments', ['data'], unique=False)
     op.create_table('image_formats',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('format', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -99,8 +101,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_image_formats_image_id'), table_name='image_formats')
     op.drop_index(op.f('ix_image_formats_id'), table_name='image_formats')
     op.drop_table('image_formats')
-    op.drop_index(op.f('ix_comments_data'), table_name='comments')
-    op.drop_table('comments')
+    op.drop_index(op.f('ix_image_comments_data'), table_name='image_comments')
+    op.drop_table('image_comments')
     op.drop_table('images')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_last_name'), table_name='users')
