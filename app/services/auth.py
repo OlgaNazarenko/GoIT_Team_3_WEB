@@ -184,7 +184,7 @@ class AuthService:
         except JWTError as e:
             raise credentials_exception
 
-        user = None# cls.redis.get(f"user:{email}")
+        user = None  # cls.redis.get(f"user:{email}") TODO лише для розробки.
         if user is None:
 
             user = await repository_users.get_user_by_email(email, db)
@@ -264,3 +264,18 @@ class AuthService:
 
         cls.redis.set(f"black-list:{email}", access_token.encode('utf-8'))
         cls.redis.expire(f"black-list:{email}", expire_seconds)
+
+
+async def get_current_active_user(current_user: User = Depends(AuthService.get_current_user)) -> User:
+    """
+    The get_current_active_user function is a dependency that returns the current user,
+    if it exists and is active. If not, an HTTPException with status code 400 (Bad Request)
+    is raised.
+
+    :param current_user: User: Pass the user object to the function
+    :return: The current_user if it is active
+    """
+    if not current_user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+
+    return current_user

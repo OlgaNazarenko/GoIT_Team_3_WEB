@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Depends, status, Security, BackgroundTasks, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials, HTTPBearer
@@ -6,19 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
 from app.database.models import User
-from app.schemas.user import UserCreate, UserCreateResponse, TokenResponse, EmailModel
+from app.schemas import user as user_schemas
+from app.schemas.token import TokenResponse
 from app.repository import users as repository_users
-from app.services.auth import AuthService
+from app.services.auth import AuthService, get_current_active_user
 from app.services.email import send_email_confirmed, send_email_reset_password
 from config import Template
-
 
 router = APIRouter(prefix='/auth', tags=["Authorization"])
 security = HTTPBearer()
 
 
-@router.post("/signup", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
-async def signup(body: UserCreate, background_tasks: BackgroundTasks, request: Request, db: AsyncSession = Depends(get_db)):
+@router.post("/signup", response_model=user_schemas.UserCreateResponse, status_code=status.HTTP_201_CREATED)
+async def signup(
+        body: user_schemas.UserCreate,
+        background_tasks: BackgroundTasks,
+        request: Request, db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The signup function creates a new user in the database.
         It takes in a UserModel object, which is validated by pydantic.
@@ -46,7 +52,10 @@ async def signup(body: UserCreate, background_tasks: BackgroundTasks, request: R
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(
+        body: OAuth2PasswordRequestForm = Depends(),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The login function is used to authenticate a user.
 
@@ -55,6 +64,7 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
     :return: A dictionary with the access_token, refresh_token and token type
     """
     user = await repository_users.get_user_by_email(body.username, db)
+    # print(user.email_verified)
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email")
@@ -73,8 +83,11 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
 
 
 @router.get("/logout", status_code=status.HTTP_401_UNAUTHORIZED)
-async def logout(request: Request, current_user: User = Depends(AuthService.get_current_user),
-                 db: AsyncSession = Depends(get_db)):
+async def logout(
+        request: Request,
+        current_user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The logout function is used to logout a user.
     It takes in the request object and the current_user, which is obtained from the AuthService.get_current_user function.
@@ -94,7 +107,10 @@ async def logout(request: Request, current_user: User = Depends(AuthService.get_
 
 
 @router.get('/refresh_token', response_model=TokenResponse)
-async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security), db: AsyncSession = Depends(get_db)):
+async def refresh_token(
+        credentials: HTTPAuthorizationCredentials = Security(security),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The refresh_token function is used to refresh the access token.
         The function takes in a refresh token and returns a new access_token and refresh_token pair.
@@ -122,7 +138,10 @@ async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(sec
 
 
 @router.get('/confirmed_email/{token}', include_in_schema=False)
-async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
+async def confirmed_email(
+        token: str,
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The confirmed_email function is used to confirm a user's email address.
         It takes the token from the URL and uses it to get the user's email address.
@@ -149,8 +168,11 @@ async def confirmed_email(token: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/reset_password", dependencies=[Depends(RateLimiter(times=10, minutes=5))])
-async def reset_password(body: EmailModel, background_tasks: BackgroundTasks, request: Request,
-                         db: AsyncSession = Depends(get_db)):
+async def reset_password(
+        body: user_schemas.EmailModel,
+        background_tasks: BackgroundTasks, request: Request,
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The reset_password function is used to send an email to the user with a link that will allow them
     to reset their password. The function takes in the body of the request, which contains only an email address,
@@ -176,7 +198,11 @@ async def reset_password(body: EmailModel, background_tasks: BackgroundTasks, re
 
 
 @router.get('/reset_password/{token}', response_class=HTMLResponse, include_in_schema=False)
-async def reset_password_template(token: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def reset_password_template(
+        token: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The reset_password_template function is used to render the new_password.html template, which allows a user to reset their password.
 
@@ -197,7 +223,11 @@ async def reset_password_template(token: str, request: Request, db: AsyncSession
 
 
 @router.post('/reset_password/{token}', include_in_schema=False)
-async def new_password(token: str, password: str = Form(...), db: AsyncSession = Depends(get_db)):
+async def new_password(
+        token: str,
+        password: str = Form(...),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The new_password function is used to change the password of a user.
         It takes in a token and new password, and returns an ok status if successful.
