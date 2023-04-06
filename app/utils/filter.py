@@ -1,7 +1,9 @@
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 
 from app.database.models import UserRole, User
-from app.services.auth import AuthService
+from app.services.auth import get_current_active_user
 
 
 class UserRoleFilter:
@@ -18,7 +20,7 @@ class UserRoleFilter:
             raise ValueError(f"Invalid role: {role}")
         self.role = role
 
-    async def __call__(self, current_user: User = Depends(AuthService.get_current_user)) -> None:
+    async def __call__(self, current_user: User = Depends(get_current_active_user)) -> User:
         """
         The __call__ function is a decorator that allows us to use the class as a function.
         It's used in this case because we want to be able to pass the current_user into it,
@@ -30,13 +32,13 @@ class UserRoleFilter:
         :return: A function that takes a current_user and returns none
         """
         if current_user.role == UserRole.admin:
-            return
+            return current_user
 
         elif current_user.role == UserRole.moderator and self.role in [UserRole.moderator, UserRole.user]:
-            return
+            return current_user
 
         elif current_user.role == UserRole.user and self.role == UserRole.user:
-            return
+            return current_user
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"Access denied. Access open to \"{current_user.role}\"")
