@@ -1,6 +1,7 @@
 import asyncio
+from typing import Optional
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -122,3 +123,37 @@ async def delete_image(image_id: int, db: AsyncSession = Depends(get_db),
     deleted_image = await repository_images.delete_image(image_id, db)
 
     return deleted_image
+
+
+@router.get("/", response_model=list[ImagePublic], description="Get all images",
+            dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def get_images(skip: int = 0, limit: int = Query(default=10, ge=1, le=100),
+                     description: Optional[str] = Query(default=None, min_length=3, max_length=1200),
+                     tag: Optional[str] = Query(default=None, min_length=3, max_length=1200),
+                     user_id: Optional[int] = Query(default=None, ge=1, le=100),
+                     db: AsyncSession = Depends(get_db),
+                     current_user: User = Depends(AuthService.get_current_user)):
+    """
+    The get_images function returns a list of images.
+
+    :param skip: int: Skip a number of images from the beginning of the list
+    :param limit: int: Limit the number of images returned
+    :param ge: Specify a minimum value for the parameter
+    :param le: Limit the number of images returned
+    :param description: Optional[str]: Filter the images by description
+    :param min_length: Specify the minimum length of a string
+    :param max_length: Limit the length of the description and tag parameters
+    :param tag: Optional[str]: Filter the images by tag
+    :param min_length: Specify the minimum length of a string, and max_length is used to specify the maximum length
+    :param max_length: Limit the length of the description and tag parameters
+    :param user_id: Optional[int]: Filter the images by user
+    :param ge: Specify a minimum value for the parameter
+    :param le: Limit the number of results returned
+    :param db: AsyncSession: Get a database connection
+    :param current_user: User: Get the current user from the database
+    :return: A list of images
+    :doc-author: Trelent
+    """
+    images = await repository_images.get_images(skip, limit, description, tag, user_id, db)
+
+    return images

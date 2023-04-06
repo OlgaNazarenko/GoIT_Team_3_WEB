@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database.models import Image
+from app.database.models import Image, Tag
 from sqlalchemy import update
 from typing import Optional
 from sqlalchemy.orm.exc import UnmappedInstanceError
@@ -92,3 +92,35 @@ async def delete_image(image_id: int, db: AsyncSession) -> Optional[Image]:
         return
 
     return image
+
+
+async def get_images(skip: int, limit: int, description: str, tag: str, user_id: int, db: AsyncSession) -> list[Image]:
+    """
+    The get_images function takes in a skip, limit, description, tag and user_id.
+    It then creates a query that filters the images based on the parameters passed in.
+    If there is no description or tag it will return all of the images with an offset of skip and limit of limit.
+    If there is a description it will filter by that first letter only (e.g., 'a' returns all descriptions starting with 'a').
+    If there is a tag it will filter by that specific tag name (e.g., 'cat' returns all images tagged as cat).
+    Finally if there is an id for
+
+    :param skip: int: Skip the first n images
+    :param limit: int: Limit the number of images returned
+    :param description: str: Filter the images by description
+    :param tag: str: Filter the images by a tag
+    :param user_id: int: Filter the images by user_id
+    :param db: AsyncSession: Pass the database session to the function
+    :return: A list of images
+    :doc-author: Trelent
+    """
+    query = select(Image)
+
+    if description:
+        query = query.filter(Image.description.like(f'{description}%'))
+    if tag:
+        query = query.filter(Image.tags.any(Tag.name == tag))
+    if user_id:
+        query = query.filter(Image.user_id == user_id)
+
+    image = await db.execute(query.offset(skip).limit(limit))
+
+    return image.scalars().unique().all()
