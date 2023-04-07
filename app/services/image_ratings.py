@@ -1,8 +1,9 @@
+from asyncpg import UniqueViolationError
 from fastapi import HTTPException, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import User
+from app.database.models import User, ImageRating
 from app.database.models.image_raiting import ImageRating
 from app.schemas.image_raitings import ImageRatingUpdate
 
@@ -33,10 +34,6 @@ class ImageRatingService:
         :param db: AsyncSession: Pass in the database session
         :return: A list of dictionaries
         """
-        # ratings = await db.execute(
-        #     ImageRating.__table__.select().where(ImageRating.image_id == image_id)
-        # )
-        # return ratings.fetchall()
 
         ratings = await db.scalars(select(ImageRating).filter(ImageRating.image_id == image_id))
 
@@ -75,7 +72,7 @@ class ImageRatingService:
         return False
 
     @staticmethod
-    async def create(rating: int, image_id: int, user_id: int, db: AsyncSession) -> ImageRating:
+    async def create(rating: int, image_id: int, user_id: int, db: AsyncSession) -> ImageRating | None:
         """
         The create function creates a new ImageRating object and adds it to the database.
 
@@ -85,13 +82,16 @@ class ImageRatingService:
         :param db: AsyncSession: Pass the database session to the function
         :return: The new rating object
         """
-        rating = ImageRating(rating=rating, image_id=image_id, user_id=user_id)
-        db.add(rating)
+        try:
+            rating = ImageRating(rating=rating, image_id=image_id, user_id=user_id)
+            db.add(rating)
+            await db.commit()
+            await db.refresh(rating)
+            return rating
+        except Exception as e:
+            return None
 
-        await db.commit()
-        await db.refresh(rating)
 
-        return rating
 
     @staticmethod
     async def update(rating_id: int, user: User, body: ImageRatingUpdate, db: AsyncSession) -> ImageRating:

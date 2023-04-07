@@ -1,4 +1,6 @@
+from asyncpg import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
+from psycopg2 import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
@@ -31,7 +33,10 @@ async def create_image_rating(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
     if image.user_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot rate own image")
+
     rating = await ImageRatingService.create(rating_data.rating, rating_data.image_id, current_user.id, db_session)
+    if rating is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You have already rated this image.")
 
     return rating
 
@@ -81,8 +86,8 @@ async def delete_image_rating(
 
     if AuthService.is_admin_or_moderator(current_user):
         await ImageRatingService.delete_rating_by_id(rating_id, db_session)
-    elif rating.user_id == current_user.id:
-        await ImageRatingService.delete_rating_by_id(rating_id, db_session)
+    # elif rating.user_id == current_user.id:
+    #     await ImageRatingService.delete_rating_by_id(rating_id, db_session)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
@@ -104,8 +109,8 @@ async def get_all_image_ratings(image_id: int, current_user: User = Depends(Auth
     :return: A list of imagerating objects
     """
     ratings = await ImageRatingService.get_all_ratings(image_id, db_session)
-
-    if ratings is None:
+    print(len(ratings))
+    if len(ratings) < 1:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ratings not found")
 
     return ratings
