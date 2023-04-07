@@ -1,14 +1,15 @@
-from pydantic import BaseModel
 from typing import Optional
 
+from .core import CoreModel
 
-class ImageRatingCreate(BaseModel):
+
+class ImageRatingCreate(CoreModel):
     user_id: int
     image_id: int
     rating: int
 
 
-class ImageRatingUpdate(BaseModel):
+class ImageRatingUpdate(CoreModel):
     rating: Optional[int] = None
 
     class Config:
