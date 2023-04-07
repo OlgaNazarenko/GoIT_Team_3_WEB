@@ -16,5 +16,6 @@ class ImageRatingUpdate(CoreModel):
 
 
 class ImageRatingResponse(DateTimeModelMixin, ImageRatingCreate, IDModelMixin):
+
     class Config:
         orm_mode = True

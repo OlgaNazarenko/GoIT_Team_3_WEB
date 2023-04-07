@@ -1,8 +1,10 @@
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database.models import User
 from app.database.models.image_raiting import ImageRating
+from app.schemas.image_raitings import ImageRatingUpdate
 
 
 class ImageRatingService:
@@ -31,10 +33,14 @@ class ImageRatingService:
         :param db: AsyncSession: Pass in the database session
         :return: A list of dictionaries
         """
-        ratings = await db.execute(
-            ImageRating.__table__.select().where(ImageRating.image_id == image_id)
-        )
-        return ratings.fetchall()
+        # ratings = await db.execute(
+        #     ImageRating.__table__.select().where(ImageRating.image_id == image_id)
+        # )
+        # return ratings.fetchall()
+
+        ratings = await db.scalars(select(ImageRating).filter(ImageRating.image_id == image_id))
+
+        return ratings.all()  # noqa
 
     @staticmethod
     async def get_rating_by_id(rating_id: int, db: AsyncSession) -> ImageRating:
@@ -81,26 +87,34 @@ class ImageRatingService:
         """
         rating = ImageRating(rating=rating, image_id=image_id, user_id=user_id)
         db.add(rating)
+
         await db.commit()
         await db.refresh(rating)
+
         return rating
 
     @staticmethod
-    async def update(rating_id: int, new_rating: int, db: AsyncSession) -> ImageRating:
-        """
-        The update function updates a rating in the database.
-            Args:
-                rating_id (int): The id of the rating to update.
-                rating (int): The new value for the image's score.
+    async def update(rating_id: int, user: User, body: ImageRatingUpdate, db: AsyncSession) -> ImageRating:
 
-        :param rating_id: int: Get the rating by id
-        :param new_rating: int: Pass the rating value to be updated
-        :param db: AsyncSession: Pass the database session to the function
-        :return: A rating object
         """
-        rating = await ImageRatingService.get_rating_by_id(rating_id, db)
-        if not rating:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
-        rating.rating = new_rating
-        await db.commit()
+        The update function updates the rating of an image.
+        ---
+        put:
+          tags: [ImageRating]
+
+        :param rating_id: int: Identify the rating to be updated
+        :param user: User: Pass the user object to the function
+        :param body: ImageRatingUpdate: Pass in the rating value from the request body
+        :param db: AsyncSession: Pass the database session to the function
+        :return: The updated rating object
+        :doc-author: Trelent
+        """
+        rating = await db.scalar(
+                select(ImageRating).filter(and_(ImageRating.id == rating_id, ImageRating.user_id == user.id)))
+        if rating:
+            rating.rating = body.rating
+            await db.commit()
+
+            await db.refresh(rating)
+
         return rating
