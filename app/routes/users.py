@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.connect import get_db
 from app.database.models import User, UserRole
 from app.repository import users as repository_users
+from app.repository.users import user_update_is_active
 from app.schemas.user import (
     UserPublic,
     UserPasswordUpdate,
@@ -16,6 +17,7 @@ from app.schemas.user import (
 )
 from app.services import cloudinary
 from app.services.auth import AuthService
+from app.utils.filter import UserRoleFilter
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -153,21 +155,17 @@ async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(ge
     return await repository_users.update_user_profile(current_user.id, body, db)
 
 
-@router.post("/users/ban/{user_id}")
+@router.post("/ban/{user_id}", dependencies=[Depends(UserRoleFilter(UserRole.admin))])
 async def ban_user(user_id: int, db: AsyncSession = Depends(get_db),
-                   current_user: UserRole = Depends(AuthService.get_current_user)):
+                   current_user: UserRole = Depends(AuthService.get_current_active_user())):
     """
     The ban_user function is used to ban a user.
     :param user_id: int: Specify the user id of the user to be banned
     :param db: AsyncSession: Pass the database session to the function
     :param current_user: UserRole: Get the current user's role
     :return: A dictionary with a message, which is not the right way to return data
-    :doc-author: Trelent
     """
-    if current_user != UserRole.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
     user = await repository_users.get_user_by_id(user_id, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    user.is_active = False
-    return await db.commit()
+    return await user_update_is_active(user, False, db)

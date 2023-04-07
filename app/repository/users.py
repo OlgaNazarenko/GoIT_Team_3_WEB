@@ -224,3 +224,10 @@ async def update_user_profile(user_id: int, body: ProfileUpdate, db: AsyncSessio
     await db.refresh(user)
 
     return user
+
+
+async def user_update_is_active(user: User, is_active: bool, db: AsyncSession) -> User:
+    user.is_active = is_active
+    await db.commit()
+    await db.refresh(user)
+    return user
