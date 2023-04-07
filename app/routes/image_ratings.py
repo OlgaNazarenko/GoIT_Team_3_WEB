@@ -7,6 +7,7 @@ from app.database.models import User, Image
 from app.database.models.image_raiting import ImageRating
 from app.schemas.image_raitings import ImageRatingCreate, ImageRatingUpdate
 from app.services.auth import AuthService
+from app.services.image_ratings import ImageRatingService
 
 
 router = APIRouter(prefix="/images/ratings", tags=["Image ratings"])
@@ -33,7 +34,7 @@ async def create_image_rating(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
     if image.user_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot rate own image")
-    rating = await ImageRating.create(db_session, **rating_data.dict(), image_id=image_id, user_id=current_user.id)
+    rating = await ImageRatingService.create(db_session, **rating_data.dict(), image_id=image_id, user_id=current_user.id)
     return rating
 
 
@@ -54,7 +55,7 @@ async def update_image_rating(
     :param : Get the current user
     :return: A rating object
     """
-    rating = await ImageRating.get_rating_by_id(rating_id, db_session)
+    rating = await ImageRatingService.get_rating_by_id(rating_id, db_session)
     if not rating:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
     if rating.user_id != current_user.id:
@@ -77,14 +78,14 @@ async def delete_image_rating(
     :param db_session: Get the database session
     :return: A dictionary with a message
     """
-    rating = await ImageRating.get_rating_by_id(db_session, rating_id)
+    rating = await ImageRatingService.get_rating_by_id(db_session, rating_id)
     if not rating:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
 
     if AuthService.is_admin_or_moderator(current_user):
-        await ImageRating.delete_rating_by_id(db_session, rating_id)
+        await ImageRatingService.delete_rating_by_id(db_session, rating_id)
     elif rating.user_id == current_user.id:
-        await ImageRating.delete_rating_by_id(db_session, rating_id)
+        await ImageRatingService.delete_rating_by_id(db_session, rating_id)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
@@ -104,5 +105,5 @@ async def get_all_image_ratings(image_id: int, db_session = Depends(get_db)):
     :param db_session: Pass the database session to the function
     :return: A list of imagerating objects
     """
-    ratings = await ImageRating.get_all_ratings(db_session, image_id)
+    ratings = await ImageRatingService.get_all_ratings(db_session, image_id)
     return ratings
