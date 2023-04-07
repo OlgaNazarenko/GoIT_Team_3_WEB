@@ -265,6 +265,12 @@ class AuthService:
         cls.redis.set(f"black-list:{email}", access_token.encode('utf-8'))
         cls.redis.expire(f"black-list:{email}", expire_seconds)
 
+    @classmethod
+    async def is_admin_or_moderator(cls, current_user: User = Depends(get_current_user)):
+        if not current_user.is_admin and not current_user.is_moderator:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+        return current_user
+
     def role_required(*roles: UserRole):
         """
         The role_required function is a decorator that checks if the user has the required role.
@@ -278,8 +284,3 @@ class AuthService:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
             return current_user
         return _role_required
-
-    async def is_admin_or_moderator(current_user: User = Depends(AuthService.get_current_user)):
-        if not current_user.is_admin and not current_user.is_moderator:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
-        return current_user

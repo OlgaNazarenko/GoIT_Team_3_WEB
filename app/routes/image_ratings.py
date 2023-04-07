@@ -9,10 +9,10 @@ from app.schemas.image_raitings import ImageRatingCreate, ImageRatingUpdate
 from app.services.auth import AuthService
 
 
-router = APIRouter()
+router = APIRouter(prefix="/images/ratings", tags=["Image ratings"])
 
 
-@router.post("/{image_id}/ratings", response_model=ImageRating)
+@router.post("/{image_id}", response_model=ImageRating)
 async def create_image_rating(
     image_id: int,
     rating_data: ImageRatingCreate,
@@ -37,7 +37,7 @@ async def create_image_rating(
     return rating
 
 
-@router.put("/{image_id}/ratings/{rating_id}", response_model=ImageRating)
+@router.put("/{image_id}/{rating_id}", response_model=ImageRating)
 async def update_image_rating(
     rating_id: int,
     rating_data: ImageRatingUpdate,
@@ -54,7 +54,7 @@ async def update_image_rating(
     :param : Get the current user
     :return: A rating object
     """
-    rating = await ImageRating.get_rating_by_id(db_session, rating_id)
+    rating = await ImageRating.get_rating_by_id(rating_id, db_session)
     if not rating:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
     if rating.user_id != current_user.id:
