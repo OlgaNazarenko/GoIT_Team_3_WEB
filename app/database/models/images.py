@@ -7,14 +7,14 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Table,
-    Column, event,
+    Column, select,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship, backref, Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 
 from .tags import Tag
 from .base import Base
 from .users import User
-
 
 image_m2m_tag = Table(
     "image_m2m_tag",
@@ -40,7 +40,6 @@ class Image(Base):
     ratings = relationship("PhotoRating", cascade="all, delete-orphan", backref=backref("image"))
     average_rating: Mapped[float] = mapped_column(default=0.0)
 
-
     def update_average_rating(self):
         """
         The update_average_rating function updates the average rating of a photo.
@@ -60,5 +59,5 @@ class Image(Base):
             self.average_rating = 0
 
     @staticmethod
-    async def get_image_by_id(db_session: Session, image_id: int) -> Optional["Image"]:
-        return await db_session.query(Image).filter(Image.id == image_id).first()
+    async def get_image_by_id(image_id: int, db: AsyncSession) -> Optional["Image"]:
+        return await db.scalar(select(Image).filter(Image.id == image_id))

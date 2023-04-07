@@ -1,10 +1,9 @@
 from typing import Optional
 
-from .core import CoreModel
+from .core import CoreModel, DateTimeModelMixin, IDModelMixin
 
 
 class ImageRatingCreate(CoreModel):
-    user_id: int
     image_id: int
     rating: int
 
@@ -12,5 +11,10 @@ class ImageRatingCreate(CoreModel):
 class ImageRatingUpdate(CoreModel):
     rating: Optional[int] = None
 
+    class Config:
+        orm_mode = True
+
+
+class ImageRatingResponse(DateTimeModelMixin, ImageRatingCreate, IDModelMixin):
     class Config:
         orm_mode = True

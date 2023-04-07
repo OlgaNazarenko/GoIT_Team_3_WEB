@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models.image_raiting import ImageRating
@@ -45,7 +46,7 @@ class ImageRatingService:
         :param db: AsyncSession: Pass the database connection to the function
         :return: A rating object from the database
         """
-        rating = await db.query(ImageRating).filter(ImageRating.id == rating_id).first()
+        rating = await db.scalar(select(ImageRating).filter(ImageRating.id == rating_id))
         return rating
 
     @staticmethod
@@ -81,10 +82,11 @@ class ImageRatingService:
         rating = ImageRating(rating=rating, image_id=image_id, user_id=user_id)
         db.add(rating)
         await db.commit()
+        await db.refresh(rating)
         return rating
 
     @staticmethod
-    async def update(rating_id: int, rating: int, db: AsyncSession) -> ImageRating:
+    async def update(rating_id: int, new_rating: int, db: AsyncSession) -> ImageRating:
         """
         The update function updates a rating in the database.
             Args:
@@ -92,13 +94,13 @@ class ImageRatingService:
                 rating (int): The new value for the image's score.
 
         :param rating_id: int: Get the rating by id
-        :param rating: int: Pass the rating value to be updated
+        :param new_rating: int: Pass the rating value to be updated
         :param db: AsyncSession: Pass the database session to the function
         :return: A rating object
         """
         rating = await ImageRatingService.get_rating_by_id(rating_id, db)
         if not rating:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
-        rating.rating = rating
+        rating.rating = new_rating
         await db.commit()
         return rating
