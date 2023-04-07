@@ -96,7 +96,12 @@ async def get_all_image_ratings(image_id: int, db=Depends(get_db)):
         ---
         get:
             description: Get all ratings for an image.
-            responses:  # This is the response that will be returned if the request is successful.  The HTTP status code 200 means &quot;OK&quot;.   The schema defines what data will be returned in the response body, and how it should look (i.e., what fields are included).   In this case, we're returning a list of ImageRating objects (see models/image_rating_model) with each object having an id field and a rating field (both integers).  We also
+            responses:  # This is the response that will be returned if the request is successful.
+            The HTTP status code 200 means &quot;OK&quot;.
+            The schema defines what data will be returned in the response body, and how it should look
+            (i.e., what fields are included).   In this case, we're returning a list of ImageRating objects
+            (see models/image_rating_model) with each object having an id field and a rating field (both integers).
+            We also
 
     :param image_id: int: Specify the image id
     :param db: Pass the database session to the function
