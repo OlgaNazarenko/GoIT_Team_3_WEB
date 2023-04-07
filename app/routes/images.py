@@ -25,28 +25,32 @@ router = APIRouter(prefix="/images", tags=["Images"])
     dependencies=[Depends(RateLimiter(times=10, seconds=60))]
 )
 async def upload_image(file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
-                       tags: list[str] = Form(alias="tag", min_length=3, max_length=50),
+                       tags: list[str] | None = Query(default=None, max_length=50),
                        db: AsyncSession = Depends(get_db),
                        current_user: User = Depends(AuthService.get_current_user),
                        ):
     """
-    The upload_image function is used to upload an image to the cloudinary server.
-    The function takes in a file, description and database session as parameters.
-    It then uses the cloudinary library to upload the image and returns a response with
-    the uploaded image's id.
+    The upload_image function is used to upload an image file to the cloudinary server.
+    The function takes in a file, description, and tags as parameters. The file parameter is required and must be of type UploadFile (a FastAPI class).
+    The description parameter is also required and must be of type str with a minimum length of 10 characters and maximum length of 1200 characters.
+    The tags parameter can either be None or a list[str] with each string having a maximum length 50 characters.
 
-    :param file: UploadFile: Get the file from the request body
-    :param description: str: Get the description of the image from the request body
-    :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the user id of the current logged in user
-    :return: A dict with the following keys:
+    :param file: UploadFile: Receive the image file from the client
+    :param description: str: Specify the description of the image
+    :param max_length: Limit the number of characters that can be entered in a field
+    :param tags: list[str] | None: Specify that the tags parameter is optional and can be none
+    :param max_length: Limit the length of the description and tags
+    :param db: AsyncSession: Get the database session from the dependency injection container
+    :param current_user: User: Get the current user from the database
+    :param : Get the image id from the url
+    :return: A dict with the image and a detail message
+    :doc-author: Trelent
     """
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
 
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
-
     image = await repository_images.create_image(current_user.id, description.strip(), tags, image['public_id'], db)
 
     return {"image": image, "detail": "Image successfully uploaded"}
@@ -129,31 +133,11 @@ async def delete_image(image_id: int, db: AsyncSession = Depends(get_db),
             dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def get_images(skip: int = 0, limit: int = Query(default=10, ge=1, le=100),
                      description: Optional[str] = Query(default=None, min_length=3, max_length=1200),
-                     tag: Optional[str] = Query(default=None, min_length=3, max_length=1200),
+                     tags: list[str] | None = Query(default=None, max_length=50),
                      user_id: Optional[int] = Query(default=None, ge=1, le=100),
                      db: AsyncSession = Depends(get_db),
                      current_user: User = Depends(AuthService.get_current_user)):
-    """
-    The get_images function returns a list of images.
 
-    :param skip: int: Skip a number of images from the beginning of the list
-    :param limit: int: Limit the number of images returned
-    :param ge: Specify a minimum value for the parameter
-    :param le: Limit the number of images returned
-    :param description: Optional[str]: Filter the images by description
-    :param min_length: Specify the minimum length of a string
-    :param max_length: Limit the length of the description and tag parameters
-    :param tag: Optional[str]: Filter the images by tag
-    :param min_length: Specify the minimum length of a string, and max_length is used to specify the maximum length
-    :param max_length: Limit the length of the description and tag parameters
-    :param user_id: Optional[int]: Filter the images by user
-    :param ge: Specify a minimum value for the parameter
-    :param le: Limit the number of results returned
-    :param db: AsyncSession: Get a database connection
-    :param current_user: User: Get the current user from the database
-    :return: A list of images
-    :doc-author: Trelent
-    """
-    images = await repository_images.get_images(skip, limit, description, tag, user_id, db)
+    images = await repository_images.get_images(skip, limit, description, tags, user_id, db)
 
     return images
