@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi_limiter.depends import RateLimiter
@@ -9,15 +9,18 @@ from app.database.models import UserRole, User
 from app.schemas.image_comments import CommentBase, CommentPublic, CommentUpdate
 from app.repository import comments as repository_comments
 from app.utils.filter import UserRoleFilter
-from app.services.auth import AuthService
+from app.services.auth import get_current_active_user
 
 
 router = APIRouter(prefix='/images/comments', tags=["Image comments"])
 
 
 @router.post("/", response_model=CommentPublic, status_code=status.HTTP_201_CREATED)
-async def create_comment(body: CommentBase, db: AsyncSession = Depends(get_db),
-                         current_user: User = Depends(AuthService.get_current_user)):
+async def create_comment(
+        body: CommentBase,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The create_comment function creates a new comment in the database.
 
@@ -31,13 +34,19 @@ async def create_comment(body: CommentBase, db: AsyncSession = Depends(get_db),
     )
 
 
-@router.get('/', response_model=List[CommentPublic], description='No more than 10 requests per minute',
-            dependencies=[Depends(RateLimiter(times=10, seconds=60)), Depends(UserRoleFilter(role=UserRole.moderator))])
-async def get_comments_by_image_or_user_id(image_id: Optional[int] = None,
-                                           user_id: Optional[int] = None,
-                                           skip: int = 0,
-                                           limit: int = 10, db: AsyncSession = Depends(get_db),
-                                           current_user: User = Depends(AuthService.get_current_user)):
+@router.get(
+    '/',
+    response_model=List[CommentPublic],
+    description='No more than 10 requests per minute',
+    dependencies=[Depends(RateLimiter(times=10, seconds=60)), Depends(UserRoleFilter(role=UserRole.moderator))]
+)
+async def get_comments_by_image_or_user_id(
+        image_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 10, db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The get_comments_by_image_or_user_id function is used to get comments by image_id or user_id.
         Args:
@@ -62,8 +71,11 @@ async def get_comments_by_image_or_user_id(image_id: Optional[int] = None,
 
 
 @router.get("/{comment_id}", response_model=CommentPublic)
-async def get_comment(comment_id: int, db: AsyncSession = Depends(get_db),
-                      current_user: User = Depends(AuthService.get_current_user)):
+async def get_comment(
+        comment_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The get_comment function returns a comment by its id.
 
@@ -80,11 +92,14 @@ async def get_comment(comment_id: int, db: AsyncSession = Depends(get_db),
     return comment
 
 
-#TODO moderator -> cannot access and update other comments, only his
-@router.patch("/", response_model=CommentPublic,
-              dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
-async def update_comment(body: CommentUpdate, db: AsyncSession = Depends(get_db),
-                         current_user: User = Depends(AuthService.get_current_user)):
+# TODO moderator -> cannot access and update other comments, only his
+@router.put("/", response_model=CommentPublic,
+            dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
+async def update_comment(
+        body: CommentUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The update_comment function updates a comment in the database.
         The function takes an id of the comment to be updated, and a CommentUpdate object containing
@@ -104,8 +119,11 @@ async def update_comment(body: CommentUpdate, db: AsyncSession = Depends(get_db)
 
 
 @router.delete('/{comment_id}', dependencies=[Depends(UserRoleFilter(UserRole.moderator))])
-async def remove_comment(comment_id: int, db: AsyncSession = Depends(get_db),
-                         current_user: User = Depends(AuthService.get_current_user)):
+async def remove_comment(
+        comment_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The remove_comment function removes a comment from the database.
         The function takes in an integer representing the id of the comment to be removed,

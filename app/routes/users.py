@@ -1,27 +1,33 @@
 import asyncio
+from typing import Any
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    UploadFile,
+    File,
+    HTTPException,
+    status,
+)
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
-from app.database.models import User
+from app.database.models import User, UserRole
 from app.repository import users as repository_users
-from app.schemas.user import (
-    UserPublic,
-    UserPasswordUpdate,
-    EmailModel,
-    ProfileUpdate,
-    UserProfile
-)
+from app.schemas import user as user_schemas
 from app.services import cloudinary
-from app.services.auth import AuthService
+from app.services.auth import AuthService, get_current_active_user
+from app.utils.filter import UserRoleFilter
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/me/", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def get_me(current_user: User = Depends(AuthService.get_current_user)):
+@router.get("/me/", response_model=user_schemas.UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def get_me(
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The get_me function returns the current user.
 
@@ -31,9 +37,13 @@ async def get_me(current_user: User = Depends(AuthService.get_current_user)):
     return current_user
 
 
-@router.patch("/avatar", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(get_db),
-                        current_user: User = Depends(AuthService.get_current_user)):
+@router.patch("/avatar", response_model=user_schemas.UserPublic,
+              dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_avatar(
+        file: UploadFile = File(),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The update_avatar function updates the avatar of a user.
 
@@ -55,9 +65,13 @@ async def update_avatar(file: UploadFile = File(), db: AsyncSession = Depends(ge
     return await repository_users.update_avatar(current_user.id, avatar['url'], db)
 
 
-@router.patch("/email", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=2, seconds=60))])
-async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
-                       current_user: User = Depends(AuthService.get_current_user)):
+@router.patch("/email", response_model=user_schemas.UserPublic,
+              dependencies=[Depends(RateLimiter(times=2, seconds=60))])
+async def update_email(
+        body: user_schemas.EmailModel,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The update_email function updates the email of a user.
         The function takes in an EmailModel object, which contains the new email address to be updated.
@@ -69,7 +83,6 @@ async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
     :return: A user object
     """
     updated_user = await repository_users.update_email(current_user.id, body.email, db)
-
     if updated_user is None:
         return HTTPException(status_code=status.HTTP_409_CONFLICT,
                              detail="An account with this email address already exists")
@@ -77,17 +90,20 @@ async def update_email(body: EmailModel, db: AsyncSession = Depends(get_db),
     return updated_user
 
 
-@router.patch("/password", response_model=UserPublic, dependencies=[Depends(RateLimiter(times=200, seconds=60))])
-async def update_password(body: UserPasswordUpdate, db: AsyncSession = Depends(get_db),
-                          current_user: User = Depends(AuthService.get_current_user)):
+@router.patch("/password", response_model=user_schemas.UserPublic,
+              dependencies=[Depends(RateLimiter(times=2, seconds=60))])
+async def update_password(
+        body: user_schemas.UserPasswordUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
-    The update_password function takes in a ChangePassword object, which contains the old and new passwords.
-    It then verifies that the old password is correct, hashes the new password, and updates it in the database.
+    The update_password function updates the password of a user.
 
-    :param body: ChangePassword: Pass the old and new password to the function
+    :param body: UserPasswordUpdate: Get the old and new password from the request body
     :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the user that is currently logged in
-    :return: A dictionary with the following keys:
+    :param current_user: User: Get the user object from the database
+    :return: A json response with the updated user
     """
     if not AuthService.verify_password(body.old_password, current_user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid old password")
@@ -97,20 +113,71 @@ async def update_password(body: UserPasswordUpdate, db: AsyncSession = Depends(g
     return await repository_users.update_password(current_user.id, password, db)
 
 
-# TODO update method
-@router.get("/{user_id}", response_model=UserProfile,
-            dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db),
-                           current_user: User = Depends(AuthService.get_current_user)) -> UserProfile:
+@router.post(
+    "/change-role",
+    response_model=user_schemas.UserPublic,
+    dependencies=[Depends(UserRoleFilter(UserRole.admin))]
+)
+async def change_user_role(
+        body: user_schemas.ChangeRole,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
-    The get_user_profile function is used to retrieve a user's profile information.
-        It takes in the user_id of the desired profile and returns a UserPublic object containing all publically available
-        information about that user.
+    The change_user_role function is used to change the role of a user.
 
-    :param user_id: int: Get the user_id from the path
-    :param db: AsyncSession: Pass the database session to the function
-    :param current_user: User: Get the user object of the currently logged in user
-    :return: A model of UserProfile object
+    :param body: user_schemas.ChangeRole: Validate the request body
+    :param db: AsyncSession: Pass the database session to the repository layer
+    :param current_user: User: Get the current user
+    :return: A dictionary with the user_id and role
+    """
+    user = await repository_users.get_user_by_id(body.user_id, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.role == body.role:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user already has this role installed")
+
+    return await repository_users.user_update_role(user, body.role, db)  # noqa
+
+
+@router.patch("/", response_model=user_schemas.UserPublic)
+async def update_user_profile(
+        body: user_schemas.ProfileUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The update_user_profile function updates the user's profile.
+
+    :param body: ProfileUpdate: Pass the data from the request body to this function
+    :param db: AsyncSession: Pass the database session to the repository layer
+    :param current_user: User: Get the current user from the database
+    :return: A dictionary with the updated user information
+    """
+    if body.username and await repository_users.get_user_by_username(username=body.username, db=db):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That username is already taken. Please try another one."
+        )
+
+    return await repository_users.update_user_profile(current_user.id, body, db)
+
+
+# TODO update method
+@router.get("/{user_id}", response_model=user_schemas.UserProfile,
+            dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def get_user_profile(
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The get_user function is used to retrieve a user's profile.
+
+    :param user_id: int: Get the user id from the url
+    :param db: AsyncSession: Pass in the database session
+    :param current_user: User: Get the current user
+    :return: A userprofile object
     """
     user = await repository_users.get_user_by_id(user_id, db)
 
@@ -120,7 +187,7 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db),
 
     num_photos = await repository_users.get_num_photos_by_user(user_id, db)
 
-    user_profile = UserProfile(
+    user_profile = user_schemas.UserProfile(
         id=user.id,
         username=user.username,
         first_name=user.first_name,
@@ -131,23 +198,3 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_db),
     )
 
     return user_profile
-
-
-@router.patch("/", response_model=UserPublic)
-async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(get_db),
-                              current_user: User = Depends(AuthService.get_current_user)) -> UserPublic:
-    """
-    The update_user_profile function updates a user's profile.
-
-    :param body: ProfileUpdate: Specify the type of data that is expected to be passed in
-    :param db: AsyncSession: Pass in the database session
-    :param current_user: User: Get the current user's id
-    :return: A model of UserPublic object
-    """
-    if body.username and await repository_users.get_user_by_username(username=body.username, db=db):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="That username is already taken. Please try another one."
-        )
-
-    return await repository_users.update_user_profile(current_user.id, body, db)

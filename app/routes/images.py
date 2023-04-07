@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
@@ -7,38 +8,42 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.connect import get_db
 from app.database.models import User, UserRole
 from app.repository import images as repository_images
-from app.repository import tags as repository_tags
-from app.repository.tags import get_or_create_tags
 from app.schemas.image import (
     ImageCreateResponse,
     ImagePublic,
 )
 from app.services import cloudinary
-from app.services.auth import AuthService
+from app.services.auth import get_current_active_user
+
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
+
 #  TODO tags validation
+#  TODO maximum 5 tags
 @router.post(
     "/", response_model=ImageCreateResponse, response_model_by_alias=False, status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))]
 )
-async def upload_image(file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
-                       tags: list[str] = Form(alias="tag", min_length=3, max_length=50),
-                       db: AsyncSession = Depends(get_db),
-                       current_user: User = Depends(AuthService.get_current_user),
-                       ):
+async def upload_image(
+        file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
+        tags: list[str] = Form(alias="tag", min_length=3, max_length=50),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user),
+) -> Any:
     """
-    The upload_image function is used to upload an image to the cloudinary server.
-    The function takes in a file, description and database session as parameters.
-    It then uses the cloudinary library to upload the image and returns a response with
-    the uploaded image's id.
+    The upload_image function is used to upload an image file to the cloudinary server.
+    The function takes in a file, description, and tags as parameters. The file parameter is required and must be of type UploadFile (a FastAPI File).
+    The description parameter is optional but if provided it must be between 10-1200 characters long. The tags parameter is also optional but if provided
+    it must contain at least 3 words with each word being no longer than 50 characters long.
 
-    :param file: UploadFile: Get the file from the request body
-    :param description: str: Get the description of the image from the request body
+    :param file: UploadFile: Get the file from the request
+    :param description: str: Get the description of the image
+    :param tags: list[str]: Receive a list of tags from the client
     :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the user id of the current logged in user
-    :return: A dict with the following keys:
+    :param current_user: User: Get the user who is currently logged in
+    :param : Specify the type of file that will be uploaded
+    :return: A dictionary with the image and a detail message
     """
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
@@ -52,14 +57,17 @@ async def upload_image(file: UploadFile = File(), description: str = Form(min_le
 
 
 @router.get("/{image_id}", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=10))])
-async def get_image(image_id: int, current_user: User = Depends(AuthService.get_current_user),
-                    db: AsyncSession = Depends(get_db)):
+async def get_image(
+        image_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The get_image function returns an image by its id.
 
     :param image_id: int: Get the image id from the url
-    :param current_user: User: Get the current user from the database
     :param db: AsyncSession: Pass the database session to the function
+    :param current_user: User: Get the current user from the database
     :return: The image object
     """
     image = await repository_images.get_image_by_id(image_id, db)
@@ -69,10 +77,14 @@ async def get_image(image_id: int, current_user: User = Depends(AuthService.get_
     return image
 
 
-@router.put("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def update_description(image_id: int, description: str = Form(min_length=10, max_length=1200),
-                             db: AsyncSession = Depends(get_db),
-                             current_user: User = Depends(AuthService.get_current_user)):
+# TODO нужно еще добавить возможность изменения тегов картинки
+@router.patch("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_description(
+        image_id: int,
+        description: str = Form(min_length=10, max_length=1200),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The update_description function updates the description of an image.
         The function takes in the description to be updated.
@@ -98,8 +110,11 @@ async def update_description(image_id: int, description: str = Form(min_length=1
 
 
 @router.delete("/", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def delete_image(image_id: int, db: AsyncSession = Depends(get_db),
-                       current_user: User = Depends(AuthService.get_current_user)):
+async def delete_image(
+        image_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The delete_image function deletes an image from the database.
         Args:

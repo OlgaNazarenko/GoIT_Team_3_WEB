@@ -286,7 +286,7 @@ class AuthService:
             return current_user
 
         return _role_required
-
+        
 
 async def get_current_active_user(current_user: User = Depends(AuthService.get_current_user)) -> User:
     """
