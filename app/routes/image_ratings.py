@@ -1,10 +1,7 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database.connect import get_db
 from app.database.models import User, Image
-from app.database.models.image_raiting import ImageRating
 from app.schemas.image_raitings import ImageRatingCreate, ImageRatingUpdate, ImageRatingResponse
 from app.services.auth import AuthService
 from app.services.image_ratings import ImageRatingService
