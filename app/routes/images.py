@@ -1,7 +1,8 @@
 import asyncio
-from typing import Any
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from typing import Optional, Any
+
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,7 +51,6 @@ async def upload_image(
 
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
-
     image = await repository_images.create_image(current_user.id, description.strip(), tags, image['public_id'], db)
 
     return {"image": image, "detail": "Image successfully uploaded"}
@@ -137,3 +137,17 @@ async def delete_image(
     deleted_image = await repository_images.delete_image(image_id, db)
 
     return deleted_image
+
+
+@router.get("/", response_model=list[ImagePublic], description="Get all images",
+            dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def get_images(skip: int = 0, limit: int = Query(default=10, ge=1, le=100),
+                     description: Optional[str] = Query(default=None, min_length=3, max_length=1200),
+                     tags: list[str] | None = Query(default=None, max_length=50),
+                     user_id: Optional[int] = Query(default=None, ge=1, le=100),
+                     db: AsyncSession = Depends(get_db),
+                     current_user: User = Depends(AuthService.get_current_user)):
+
+    images = await repository_images.get_images(skip, limit, description, tags, user_id, db)
+
+    return images
