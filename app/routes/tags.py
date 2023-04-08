@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import UserRole, User
 from app.database.connect import get_db
-from app.schemas.tag import TagModel, TagResponse
+from app.schemas.tag import TagResponse, TagBase
 from app.repository import tags as repository_tags
 
 from app.utils.filter import UserRoleFilter
@@ -29,7 +29,7 @@ async def read_tag(tag_id: int, db: AsyncSession = Depends(get_db),
 
 
 @router.put("/{tag_id}", response_model=TagResponse)
-async def update_tag(body: TagModel, tag_id: int, db: AsyncSession = Depends(get_db),
+async def update_tag(body: TagBase, tag_id: int, db: AsyncSession = Depends(get_db),
                      current_user: User = Depends(AuthService.get_current_user)):
     tag = await repository_tags.update_tag(tag_id, body, db)
     if tag is None:

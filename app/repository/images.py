@@ -113,9 +113,10 @@ async def get_images(skip: int, limit: int, description: str, tags: list[str], u
 
     query = select(Image)
     if description:
-        query = query.filter(Image.description.like(f'{description}%'))
+        query = query.filter(Image.description.like(f'%{description}%'))
     if tags:
-        query = query.filter(Image.tags.any(Tag.name.in_(tags)))
+        for tag in tags:
+            query = query.filter(Image.tags.any(Tag.name.ilike(f'%{tag}%')))
     if user_id:
         query = query.filter(Image.user_id == user_id)
 
