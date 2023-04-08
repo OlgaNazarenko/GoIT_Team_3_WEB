@@ -1,6 +1,4 @@
-from asyncpg import UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
-from psycopg2 import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
@@ -13,7 +11,7 @@ from app.services.image_ratings import ImageRatingService
 router = APIRouter(prefix="/images/ratings", tags=["Image ratings"])
 
 
-@router.post("/{image_id}", response_model=ImageRatingResponse)
+@router.post("/{image_id}", response_model=ImageRatingResponse, status_code=status.HTTP_201_CREATED)
 async def create_image_rating(
         rating_data: ImageRatingCreate,
         current_user: User = Depends(AuthService.get_current_user),
@@ -22,11 +20,10 @@ async def create_image_rating(
     """
     The create_image_rating function creates a new image rating.
 
-    :param image_id: int: Get the image by id
-    :param rating_data: ImageRatingCreate: Validate the data that is passed to the function
-    :param current_user: User: Get the current user from the authservice
-    :param db_session: Get the database session
-    :return: A new imagerating object, which is then serialized by the framework and returned to the client
+    :param rating_data: ImageRatingCreate: Get the rating and image_id from the request body
+    :param current_user: User: Get the current user from the database
+    :param db_session: Pass the database session to the image service
+    :return: A rating object
     """
     image = await Image.get_image_by_id(db_session, rating_data.image_id)
     if not image:

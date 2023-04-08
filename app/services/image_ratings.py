@@ -1,9 +1,8 @@
-from asyncpg import UniqueViolationError
 from fastapi import HTTPException, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import User, ImageRating
+from app.database.models import User
 from app.database.models.image_raiting import ImageRating
 from app.schemas.image_raitings import ImageRatingUpdate
 
