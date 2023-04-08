@@ -6,7 +6,7 @@ from app.database.models import User, Image
 
 from app.schemas.image_raitings import ImageRatingCreate, ImageRatingUpdate, ImageRatingResponse
 from app.services.auth import AuthService
-from app.services.image_ratings import ImageRatingService
+from app.repository.image_ratings import ImageRatingService
 
 router = APIRouter(prefix="/images/ratings", tags=["Image ratings"])
 

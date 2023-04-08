@@ -1,9 +1,9 @@
 from sqlalchemy import ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base
-from .users import User
-from .images import Image
+from app.database.models.base import Base
+from app.database.models.users import User
+from app.database.models.images import Image
 
 
 class ImageRating(Base):

@@ -3,7 +3,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import User
-from app.database.models.image_raiting import ImageRating
+from app.repository.image_raiting import ImageRating
 from app.schemas.image_raitings import ImageRatingUpdate
 
 
