@@ -19,5 +19,5 @@ class ImageComment(Base):
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now())
 
-    user: Mapped[User] = relationship(backref="comments")
-    image: Mapped[Image] = relationship(backref="comments")
+    user: Mapped[User] = relationship(backref="image_comments")
+    image: Mapped[Image] = relationship("Image", back_populates="comments", passive_deletes=True)
