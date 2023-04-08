@@ -25,6 +25,9 @@ async def create_image_rating(
     :param db_session: Pass the database session to the image service
     :return: A rating object
     """
+    if rating_data.rating > 5 or rating_data.rating < 0:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Maximum rating is 5, minimum rating 0")
+
     image = await Image.get_image_by_id(db_session, rating_data.image_id)
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
@@ -55,6 +58,8 @@ async def update_image_rating(
     :param : Get the current user
     :return: A rating object
     """
+    if rating_data.rating > 5 or rating_data.rating < 0:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Maximum rating is 5, minimum rating 0")
 
     new_rating = await ImageRatingService.update(rating_id, current_user, rating_data, db=db_session)
     if new_rating is None:
@@ -83,8 +88,7 @@ async def delete_image_rating(
 
     if AuthService.is_admin_or_moderator(current_user):
         await ImageRatingService.delete_rating_by_id(rating_id, db_session)
-    # elif rating.user_id == current_user.id:
-    #     await ImageRatingService.delete_rating_by_id(rating_id, db_session)
+
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
@@ -106,7 +110,7 @@ async def get_all_image_ratings(image_id: int, current_user: User = Depends(Auth
     :return: A list of imagerating objects
     """
     ratings = await ImageRatingService.get_all_ratings(image_id, db_session)
-    print(len(ratings))
+    
     if len(ratings) < 1:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ratings not found")
 
