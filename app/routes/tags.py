@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import UserRole, User
 from app.database.connect import get_db
+
 from app.schemas.tag import TagBase, TagResponse
 from app.repository import tags as repository_tags
 
@@ -54,6 +55,7 @@ async def get_tag(
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
     return tag
+
 
 
 @router.put(
