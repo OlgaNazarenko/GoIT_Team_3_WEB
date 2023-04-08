@@ -83,7 +83,7 @@ async def get_image(
 async def update_description(
         image_id: int,
         description: str = Form(min_length=10, max_length=1200),
-        tags: Optional[list[str]] = Form(alias="tag", min_length=3, max_length=50),
+        tags: Optional[list[str]] = Form(None, alias="tag", min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:

@@ -58,15 +58,13 @@ async def update_description(image_id: int, description: str, tags: list[str], d
     :return: An image object
     """
     tags = await get_or_create_tags(tags, db)
-    try:
-        image = await get_image_by_id(image_id, db)
-        if image:
-            image.description = description
-            image.tags = tags
-            await db.commit()
-            await db.refresh(image)
-    except UnmappedInstanceError:
-        return
+
+    image = await get_image_by_id(image_id, db)
+    if image:
+        image.description = description
+        image.tags = tags
+        await db.commit()
+        await db.refresh(image)
 
     return image
 

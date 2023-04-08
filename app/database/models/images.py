@@ -38,4 +38,4 @@ class Image(Base):
     user: Mapped[User] = relationship(backref="images")
     tags: Mapped[Tag] = relationship("Tag", secondary=image_m2m_tag, backref="images", lazy='joined')
 
-    comments = relationship("ImageComment", back_populates="image_ref", cascade="all, delete")
+    comments = relationship("ImageComment", back_populates="image", cascade="all, delete")
