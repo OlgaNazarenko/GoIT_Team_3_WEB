@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +14,7 @@ from app.schemas.image_formats import (
     ImageFormatsResponse,
 )
 from app.services import cloudinary
-from app.services.auth import AuthService
-
+from app.services.auth import get_current_active_user
 
 router = APIRouter(prefix="/images/formats", tags=["Image formats"])
 
@@ -23,9 +24,11 @@ router = APIRouter(prefix="/images/formats", tags=["Image formats"])
     response_model_by_alias=False,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def formatting_image(body: ImageTransformation,
-                           current_user: User = Depends(AuthService.get_current_user),
-                           db: AsyncSession = Depends(get_db)):
+async def formatting_image(
+        body: ImageTransformation,
+        current_user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The formatting_image function is used to format an image.
         The function takes in the following parameters:
@@ -39,9 +42,11 @@ async def formatting_image(body: ImageTransformation,
     :param db: AsyncSession: Pass the database session to the repository layer
     :return: A formatted image
     """
-    image = await repository_images.get_image_by_id(current_user.id, body.image_id, db)
+    image = await repository_images.get_image_by_id(body.image_id, db)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
+    if image.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You can't format someone else's image")
 
     format_image = cloudinary.formatting_image_url(image.public_id, body.transformation)
 
@@ -61,8 +66,11 @@ async def formatting_image(body: ImageTransformation,
 
 
 @router.get('/{image_id}', response_model=ImageFormatsResponse, response_model_by_alias=False)
-async def get_image_formats(image_id: int, current_user: User = Depends(AuthService.get_current_user),
-                            db: AsyncSession = Depends(get_db)):
+async def get_image_formats(
+        image_id: int,
+        current_user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_db)
+) -> Any:
     """
     The get_image_formats function returns a list of formatted images for the given image_id.
 
@@ -71,7 +79,7 @@ async def get_image_formats(image_id: int, current_user: User = Depends(AuthServ
     :param db: AsyncSession: Get the database session
     :return: The original image and the formatted images
     """
-    image = await repository_images.get_image_by_id(current_user.id, image_id, db)
+    image = await repository_images.get_image_by_id(image_id, db)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
@@ -84,6 +92,6 @@ async def get_image_formats(image_id: int, current_user: User = Depends(AuthServ
 
 
 @router.get('/qr-code/{image_format_id}')
-async def get_image_format_qrcode(image_format_id: int, current_user: User = Depends(AuthService.get_current_user),
+async def get_image_format_qrcode(image_format_id: int, current_user: User = Depends(get_current_active_user),
                                   db: AsyncSession = Depends(get_db)):
     return "QR"

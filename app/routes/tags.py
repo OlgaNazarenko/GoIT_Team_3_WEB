@@ -1,46 +1,107 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import UserRole, User
 from app.database.connect import get_db
-from app.schemas.tag import TagResponse, TagBase
+
+from app.schemas.tag import TagBase, TagResponse
 from app.repository import tags as repository_tags
 
 from app.utils.filter import UserRoleFilter
-from app.services.auth import AuthService
+from app.services.auth import get_current_active_user
+
 
 router = APIRouter(prefix='/tags', tags=["tags"])
 
 
 @router.get("/", response_model=list[TagResponse])
-async def read_tags(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db),
-                    current_user: User = Depends(AuthService.get_current_user)):
+async def read_tags(
+        skip: int = 0,
+        limit: int = 100,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The read_tags function returns a list of tags.
+
+    :param skip: int: Skip the first n tags
+    :param limit: int: Limit the number of tags returned
+    :param db: AsyncSession: Pass the database connection to the function
+    :param current_user: User: Get the current user
+    :return: A list of tag objects
+    """
     tags = await repository_tags.get_tags(skip, limit, db)
     return tags
 
 
 @router.get("/{tag_id}", response_model=TagResponse)
-async def read_tag(tag_id: int, db: AsyncSession = Depends(get_db),
-                   current_user: User = Depends(AuthService.get_current_user)):
+async def get_tag(
+        tag_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The get_tag function is a GET request that returns the tag with the given ID.
+    If no such tag exists, it raises an HTTP 404 error.
+
+    :param tag_id: int: Get the tag id from the url
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the current user
+    :return: A tag object
+    """
     tag = await repository_tags.get_tag_by_id(tag_id, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
     return tag
 
 
-@router.put("/{tag_id}", response_model=TagResponse)
-async def update_tag(body: TagBase, tag_id: int, db: AsyncSession = Depends(get_db),
-                     current_user: User = Depends(AuthService.get_current_user)):
+
+@router.put(
+    "/{tag_id}",
+    response_model=TagResponse,
+    dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
+async def update_tag(
+        body: TagBase, tag_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The update_tag function updates a tag in the database.
+        It takes an id of the tag to update, and a body containing the new data for that tag.
+        The function returns an updated version of that Tag object.
+
+    :param body: TagBase: Define the body of the request
+    :param tag_id: int: Identify the tag to be deleted
+    :param db: AsyncSession: Pass the database session to the function
+    :param current_user: User: Get the current user
+    :return: A tag object
+    """
     tag = await repository_tags.update_tag(tag_id, body, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
     return tag
 
 
-@router.delete("/{tag_id}", response_model=TagResponse,
-               dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
-async def remove_tag(tag_id: int, db: AsyncSession = Depends(get_db),
-                     current_user: User = Depends(AuthService.get_current_user)):
+@router.delete(
+    "/{tag_id}",
+    response_model=TagResponse,
+    dependencies=[Depends(UserRoleFilter(role=UserRole.admin))]
+)
+async def remove_tag(
+        tag_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The remove_tag function removes a tag from the database.
+
+    :param tag_id: int: Specify the id of the tag to be removed
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the user that is currently logged in
+    :return: The tag that was just deleted
+    """
     tag = await repository_tags.remove_tag(tag_id, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
