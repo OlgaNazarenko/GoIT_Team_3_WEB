@@ -14,14 +14,12 @@ from app.schemas.image import (
     ImagePublic,
 )
 from app.services import cloudinary
-from app.services.auth import get_current_active_user
-
+from app.services.auth import get_current_active_user, AuthService
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
 
 #  TODO tags validation
-#  TODO maximum 5 tags
 @router.post(
     "/", response_model=ImageCreateResponse, response_model_by_alias=False, status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))]
@@ -46,6 +44,9 @@ async def upload_image(
     :param : Specify the type of file that will be uploaded
     :return: A dictionary with the image and a detail message
     """
+    if len(tags) > 5:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="Maximum five tags can be added")
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
 
@@ -82,6 +83,7 @@ async def get_image(
 async def update_description(
         image_id: int,
         description: str = Form(min_length=10, max_length=1200),
+        tags: Optional[list[str]] = Form(alias="tag", min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
@@ -96,20 +98,24 @@ async def update_description(
     :param current_user: User: Get the current user from the database
     :return: An image object
     """
+    if len(tags) > 5:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="Maximum five tags can be added")
+
     image = await repository_images.get_image_by_id(image_id, db)
 
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not found image")
 
-    if current_user.role != UserRole.admin or image.user_id != current_user.id:
+    if current_user.role != UserRole.admin and image.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    updated_image = await repository_images.update_description(image_id, description, db)
+    updated_image = await repository_images.update_description(image_id, description, tags, db)
 
     return updated_image
 
 
-@router.delete("/", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+@router.delete("/", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def delete_image(
         image_id: int,
         db: AsyncSession = Depends(get_db),
@@ -131,10 +137,12 @@ async def delete_image(
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not found image")
 
-    if current_user.role != UserRole.admin or image.user_id != current_user.id:
+    if current_user.role != UserRole.admin and image.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     deleted_image = await repository_images.delete_image(image_id, db)
+    if deleted_image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     return deleted_image
 

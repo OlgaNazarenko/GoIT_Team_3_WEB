@@ -12,7 +12,6 @@ from app.repository import tags as repository_tags
 from app.utils.filter import UserRoleFilter
 from app.services.auth import get_current_active_user
 
-
 router = APIRouter(prefix='/tags', tags=["tags"])
 
 
@@ -56,6 +55,12 @@ async def get_tag(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
     return tag
 
+
+@router.post("/", response_model=list[TagResponse])
+async def get_or_create_tags(tags, db: AsyncSession = Depends(get_db),
+                             current_user: User = Depends(get_current_active_user)):
+    tags = await repository_tags.get_or_create_tags(tags, db)
+    return tags
 
 
 @router.put(
