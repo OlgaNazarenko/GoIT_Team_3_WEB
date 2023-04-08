@@ -79,7 +79,7 @@ async def get_image_formats(
     :param db: AsyncSession: Get the database session
     :return: The original image and the formatted images
     """
-    image = await repository_images.get_image_by_id(current_user.id, image_id, db)
+    image = await repository_images.get_image_by_id(image_id, db)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
