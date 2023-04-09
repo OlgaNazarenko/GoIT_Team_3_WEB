@@ -1,13 +1,17 @@
+from io import BytesIO
 from typing import Any
 
+import qrcode
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import StreamingResponse
 
 from app.database.connect import get_db
 from app.database.models import User
 from app.repository import images as repository_images
 from app.repository import image_formats as repository_image_formats
+from app.repository.images import get_image_by_id
 from app.schemas.image_formats import (
     ImageTransformation,
     FormattedImageCreateResponse,
@@ -94,4 +98,21 @@ async def get_image_formats(
 @router.get('/qr-code/{image_format_id}')
 async def get_image_format_qrcode(image_format_id: int, current_user: User = Depends(get_current_active_user),
                                   db: AsyncSession = Depends(get_db)):
-    return "QR"
+    formatted_image = await repository_image_formats.get_image_format_by_id(image_format_id, db)
+    if formatted_image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found formatted image")
+
+    image = await get_image_by_id(formatted_image.image_id, db)
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    format_image = cloudinary.formatting_image_url(image.public_id, formatted_image.format)
+
+    qr.add_data(format_image['url'])
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+
+    buffer = BytesIO()
+    qr_img.save(buffer)
+    buffer.seek(0)
+
+    return StreamingResponse(buffer, media_type="image/png")

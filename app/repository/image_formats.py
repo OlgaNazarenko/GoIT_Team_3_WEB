@@ -50,3 +50,10 @@ async def get_image_formats_by_image_id(user_id: int, image_id: int, db: AsyncSe
     )
 
     return images.all()  # noqa
+
+
+async def get_image_format_by_id(image_format_id: int, db: AsyncSession) -> Image:
+    return await db.scalar(
+        select(ImageFormat)
+        .filter(ImageFormat.id == image_format_id)
+    )
