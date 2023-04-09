@@ -236,6 +236,7 @@ async def user_update_role(user: User, role: UserRole, db: AsyncSession) -> User
     :return: The updated user object
     """
     user.role = role
+    await db.commit()
     await db.refresh(user)
 
     return user
