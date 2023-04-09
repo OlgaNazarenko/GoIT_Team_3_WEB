@@ -1,11 +1,8 @@
-from io import BytesIO
-from typing import Any
+from typing import Any, Optional
 
-import qrcode
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import StreamingResponse
 
 from app.database.connect import get_db
 from app.database.models import User
@@ -19,6 +16,7 @@ from app.schemas.image_formats import (
 )
 from app.services import cloudinary
 from app.services.auth import get_current_active_user
+from app.services.qr_code import QRService
 
 router = APIRouter(prefix="/images/formats", tags=["Image formats"])
 
@@ -96,7 +94,9 @@ async def get_image_formats(
 
 
 @router.get('/qr-code/{image_format_id}')
-async def get_image_format_qrcode(image_format_id: int, current_user: User = Depends(get_current_active_user),
+async def get_image_format_qrcode(image_format_id: int, version: Optional[int] = 1, box_size: Optional[int] = 10,
+                                  border: Optional[int] = 5, fit: Optional[bool] = True,
+                                  current_user: User = Depends(get_current_active_user),
                                   db: AsyncSession = Depends(get_db)):
     formatted_image = await repository_image_formats.get_image_format_by_id(image_format_id, db)
     if formatted_image is None:
@@ -104,15 +104,8 @@ async def get_image_format_qrcode(image_format_id: int, current_user: User = Dep
 
     image = await get_image_by_id(formatted_image.image_id, db)
 
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
     format_image = cloudinary.formatting_image_url(image.public_id, formatted_image.format)
 
-    qr.add_data(format_image['url'])
-    qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="black", back_color="white")
+    qr_img = await QRService.crate_qr_for_url(format_image['url'], version, box_size, border, fit)
 
-    buffer = BytesIO()
-    qr_img.save(buffer)
-    buffer.seek(0)
-
-    return StreamingResponse(buffer, media_type="image/png")
+    return qr_img

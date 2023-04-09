@@ -89,14 +89,18 @@ async def update_description(
 ) -> Any:
     """
     The update_description function updates the description of an image.
-        The function takes in the description to be updated.
-        It also takes in a database session and current_user (the user who is making this request).
 
-    :param image_id: int: Get the unique link from the request
-    :param description: Form: Get the description from the request
+    :param image_id: int: Identify the image that we want to delete
+    :param description: str: Update the description of an image
+    :param max_length: Set the maximum length of a string
+    :param tags: Optional[list[str]]: Get the tags from the request body
+    :param alias: Change the name of the parameter in swagger
+    :param min_length: Set the minimum length of the string
+    :param max_length: Limit the length of the description
     :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the current user from the database
-    :return: An image object
+    :param current_user: User: Get the user who is currently logged in
+    :return: An image with a new description and tags
+    :doc-author: Trelent
     """
     if len(tags) > 5:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
