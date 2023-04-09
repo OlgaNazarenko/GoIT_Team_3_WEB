@@ -157,7 +157,7 @@ async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(ge
 
 @router.post("/ban/{user_id}", dependencies=[Depends(UserRoleFilter(UserRole.admin))])
 async def ban_user(user_id: int, db: AsyncSession = Depends(get_db),
-                   current_user: UserRole = Depends(AuthService.get_current_active_user())):
+                   current_user: UserRole = Depends(AuthService.get_current_user)):
     """
     The ban_user function is used to ban a user.
     :param user_id: int: Specify the user id of the user to be banned
