@@ -18,14 +18,8 @@ from app.repository import users as repository_users
 from app.repository.users import user_update_is_active
 from app.schemas.user import (
     UserPublic,
-    UserPasswordUpdate,
-    EmailModel,
     ProfileUpdate,
-    UserProfile
 )
-from app.services import cloudinary
-from app.services.auth import AuthService
-from app.utils.filter import UserRoleFilter
 
 from app.schemas import user as user_schemas
 from app.services import cloudinary
