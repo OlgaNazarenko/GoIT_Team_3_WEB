@@ -229,13 +229,23 @@ async def update_user_profile(user_id: int, body: ProfileUpdate, db: AsyncSessio
 async def user_update_role(user: User, role: UserRole, db: AsyncSession) -> User:
     """
     The user_update_role function updates the role of a user.
-
+    
     :param user: User: Identify the user that will have their role updated
     :param role: UserRole: Set the user's role to the value of role
     :param db: AsyncSession: Pass in the database session to the function
     :return: The updated user object
     """
     user.role = role
+    await db.commit()
     await db.refresh(user)
 
     return user
+
+
+async def user_update_is_active(user: User, is_active: bool, db: AsyncSession) -> User:
+    user.is_active = is_active
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+    
