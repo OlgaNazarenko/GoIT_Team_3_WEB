@@ -7,7 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Table,
-    Column, event,
+    Column,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,3 +37,5 @@ class Image(Base):
 
     user: Mapped[User] = relationship(backref="images")
     tags: Mapped[Tag] = relationship("Tag", secondary=image_m2m_tag, backref="images", lazy='joined')
+
+    comments = relationship("ImageComment", back_populates="image", cascade="all, delete")

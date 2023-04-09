@@ -1,11 +1,10 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database.models import Image
-from sqlalchemy import update
+from app.database.models import Image, Tag
 from typing import Optional
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
-from app.repository.tags import get_or_create_tags
+from app.routes.tags import get_or_create_tags
 
 
 async def get_image_by_id(image_id: int, db: AsyncSession) -> Image:
@@ -48,28 +47,24 @@ async def create_image(user_id: int, description: str, tags: list[str], public_i
     return image
 
 
-async def update_description(image_id: int, description: str, db: AsyncSession) -> Optional[Image]:
+async def update_description(image_id: int, description: str, tags: list[str], db: AsyncSession) -> Optional[Image]:
     """
-    The update_description function updates the description of an image in the database.
+    The update_description function updates the description and tags of an image.
 
-    :param image_id: int: Identify the image that is being updated
-    :param description: str: Update the description of the image
+    :param image_id: int: Specify the image to update
+    :param description: str: Update the description of an image
+    :param tags: list[str]: Pass in a list of tags
     :param db: AsyncSession: Pass in the database session
     :return: An image object
     """
-    try:
-        async with db.begin():
-            image = await db.scalar(
-                update(Image)
-                .values(description=description)
-                .filter(Image.image_id == image_id)
-                .returning(Image)
-            )
-            await db.commit()
-        await db.refresh(image)
+    tags = await get_or_create_tags(tags, db)
 
-    except UnmappedInstanceError:
-        return
+    image = await get_image_by_id(image_id, db)
+    if image:
+        image.description = description
+        image.tags = tags
+        await db.commit()
+        await db.refresh(image)
 
     return image
 
@@ -81,14 +76,41 @@ async def delete_image(image_id: int, db: AsyncSession) -> Optional[Image]:
     :param db: AsyncSession: Pass in the database session to the function
     :return: An image object
     """
-    try:
-        async with db.begin():
-            image = await db.scalar(
-                delete(Image)
-                .filter(Image.id == image_id)
-                .returning(Image)
-            )
-    except UnmappedInstanceError:
-        return
+    image = await get_image_by_id(image_id, db)
+
+    if image:
+        await db.delete(image)
+        await db.commit()
 
     return image
+
+
+async def get_images(skip: int, limit: int, description: str, tags: list[str], user_id: int, db: AsyncSession) -> list[Image]:
+
+    """
+    The get_images function takes in a skip, limit, description, tags and user_id.
+    It then queries the database for images that match the given parameters.
+    If no parameters are given it will return all images.
+
+    :param skip: int: Skip a certain number of images
+    :param limit: int: Limit the number of images that are returned
+    :param description: str: Filter images by description
+    :param tags: list[str]: Filter the images by tags
+    :param user_id: int: Filter the images by user id
+    :param db: AsyncSession: Pass the database session to the function
+    :return: A list of images
+    :doc-author: Trelent
+    """
+
+    query = select(Image)
+    if description:
+        query = query.filter(Image.description.like(f'%{description}%'))
+    if tags:
+        for tag in tags:
+            query = query.filter(Image.tags.any(Tag.name.ilike(f'%{tag}%')))
+    if user_id:
+        query = query.filter(Image.user_id == user_id)
+
+    image = await db.scalars(query.offset(skip).limit(limit))
+
+    return image.unique().all()

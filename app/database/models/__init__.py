@@ -4,6 +4,7 @@ from .images import Image
 from .image_comments import ImageComment
 from .image_formats import ImageFormat
 from .tags import Tag
+from app.database.models.image_raiting import ImageRating
 
 
 __all__ = (
@@ -14,4 +15,5 @@ __all__ = (
     'ImageComment',
     'ImageFormat',
     'Tag',
+    'ImageRating',
 )

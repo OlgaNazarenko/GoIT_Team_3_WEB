@@ -63,3 +63,4 @@ class User(Base):
         :param cls: Pass the class object to the function
         """
         event.listen(cls, 'before_insert', cls.__set_user_role)
+
