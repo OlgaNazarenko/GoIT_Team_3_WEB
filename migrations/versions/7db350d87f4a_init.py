@@ -1,8 +1,8 @@
-"""init
+"""Init
 
-Revision ID: 816e0784082a
+Revision ID: 7db350d87f4a
 Revises: 
-Create Date: 2023-04-08 20:36:24.292548
+Create Date: 2023-04-10 18:04:37.549280
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '816e0784082a'
+revision = '7db350d87f4a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -53,7 +53,6 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('average_rating', sa.Float(), server_default='0.0', nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -94,9 +93,9 @@ def upgrade() -> None:
     )
     op.create_table('image_ratings',
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('rating', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('image_id', sa.Integer(), nullable=False),
-    sa.Column('rating', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['image_id'], ['images.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),

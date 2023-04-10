@@ -9,10 +9,8 @@ class ImageRatingCreate(CoreModel):
 
 
 class ImageRatingUpdate(CoreModel):
+    image_id: int
     rating: Optional[int] = None
-
-    class Config:
-        orm_mode = True
 
 
 class ImageRatingResponse(DateTimeModelMixin, ImageRatingCreate, IDModelMixin):

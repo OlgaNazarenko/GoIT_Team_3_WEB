@@ -1,77 +1,76 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
-from app.database.models import User, Image
-
+from app.database.models import User, UserRole
 from app.schemas.image_raitings import ImageRatingCreate, ImageRatingUpdate, ImageRatingResponse
-from app.services.auth import AuthService
-from app.repository.image_ratings import ImageRatingService
+from app.services.auth import get_current_active_user
+from app.repository import image_ratings as repo_image_ratings
+from app.repository import images as repository_images
 
 router = APIRouter(prefix="/images/ratings", tags=["Image ratings"])
 
 
-@router.post("/{image_id}", response_model=ImageRatingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ImageRatingResponse, status_code=status.HTTP_201_CREATED)
 async def create_image_rating(
-        rating_data: ImageRatingCreate,
-        current_user: User = Depends(AuthService.get_current_user),
-        db_session=Depends(get_db)
-):
+        body: ImageRatingCreate,
+        current_user: User = Depends(get_current_active_user),
+        db: AsyncSession = Depends(get_db)
+) -> AsyncSession:
     """
     The create_image_rating function creates a new image rating.
 
-    :param rating_data: ImageRatingCreate: Get the rating and image_id from the request body
-    :param current_user: User: Get the current user from the database
-    :param db_session: Pass the database session to the image service
-    :return: A rating object
+    :param body: ImageRatingCreate: Get the rating and image_id from the request body
+    :param current_user: User: Get the user that is currently logged in
+    :param db: AsyncSession: Get the database session
+    :return: An async session object
     """
-    if rating_data.rating > 5 or rating_data.rating < 0:
+    if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Maximum rating is 5, minimum rating 0")
 
-    image = await Image.get_image_by_id(db_session, rating_data.image_id)
+    image = await repository_images.get_image_by_id(body.image_id, db)
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
     if image.user_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot rate own image")
 
-    rating = await ImageRatingService.create(rating_data.rating, rating_data.image_id, current_user.id, db_session)
-    if rating is None:
+    rating_exist = await repo_image_ratings.get_rating_by_image_id_and_user(current_user.id, body.image_id, db)
+    if rating_exist:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You have already rated this image.")
 
-    return rating
+    return await repo_image_ratings.create_rating(current_user.id, body.rating, body.image_id, db)
 
 
-@router.put("/{image_id}/{rating_id}", response_model=ImageRatingResponse)
+@router.put("/", response_model=ImageRatingResponse)
 async def update_image_rating(
-        rating_id: int,
-        rating_data: ImageRatingUpdate,
-        current_user: User = Depends(AuthService.get_current_user),
-        db_session: AsyncSession = Depends(get_db),
-):
+        body: ImageRatingUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
-    The update_image_rating function updates an image rating.
+    The update_image_rating function updates the rating of an image.
 
-    :param rating_id: int: Specify the id of the rating to be deleted
-    :param rating_data: ImageRatingUpdate: Validate the request body
-    :param current_user: User: Get the current user from the database
-    :param db_session: Pass the database session to the function
-    :param : Get the current user
-    :return: A rating object
+    :param body: ImageRatingUpdate: Get the rating from the request body
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the user who is currently logged in
+    :return: An image rating object
     """
-    if rating_data.rating > 5 or rating_data.rating < 0:
+    if not 1 <= body.rating <= 5:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Maximum rating is 5, minimum rating 0")
 
-    new_rating = await ImageRatingService.update(rating_id, current_user, rating_data, db=db_session)
-    if new_rating is None:
+    rating = await repo_image_ratings.get_rating_by_image_id_and_user(current_user.id, body.image_id, db)
+    if rating is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
 
-    return new_rating
+    return await repo_image_ratings.update_rating(rating, body.rating, db)
 
 
 @router.delete("/ratings/{rating_id}")
 async def delete_image_rating(
         rating_id: int,
-        current_user: User = Depends(AuthService.get_current_user),
+        current_user: User = Depends(get_current_active_user),
         db_session=Depends(get_db)
 ):
     """
@@ -82,36 +81,36 @@ async def delete_image_rating(
     :param db_session: Get the database session
     :return: A dictionary with a message
     """
-    rating = await ImageRatingService.get_rating_by_id(rating_id, db_session)
+    rating = await repo_image_ratings.get_rating_by_id(rating_id, db_session)
     if not rating:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")
 
-    if AuthService.is_admin_or_moderator(current_user):
-        await ImageRatingService.delete_rating_by_id(rating_id, db_session)
-
-    else:
+    if current_user.role != UserRole.admin or current_user.id == rating.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
-    return {"message": "Rating deleted"}
+    await repo_image_ratings.remove_rating(rating, db_session)
+
+    return {"message": "Rating deleted successfully"}
 
 
 @router.get("/{image_id}/ratings")
-async def get_all_image_ratings(image_id: int, current_user: User = Depends(AuthService.get_current_user),
-                                db_session: AsyncSession = Depends(get_db)):
+async def get_all_image_ratings(
+        image_id: int,
+        db_session: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
     The get_all_image_ratings function returns all ratings for a given image.
-        ---
-        get:
-            description: Get all ratings for an image.
-            responses:  # This is the response that will be returned if the request is successful.  The HTTP status code 200 means &quot;OK&quot;.   The schema defines what data will be returned in the response body, and how it should look (i.e., what fields are included).   In this case, we're returning a list of ImageRating objects (see models/image_rating_model) with each object having an id field and a rating field (both integers).  We also
+        The function takes in an image_id and returns the list of ratings associated with that id.
 
-    :param image_id: int: Specify the image id
-    :param db_session: Pass the database session to the function
-    :return: A list of imagerating objects
+    :param image_id: int: Get the image id from the url
+    :param db_session: AsyncSession: Get the database session from the dependency injection container
+    :param current_user: User: Get the current user who is logged in
+    :return: A list of all ratings for a given image
     """
-    ratings = await ImageRatingService.get_all_ratings(image_id, db_session)
-    
-    if len(ratings) < 1:
+    ratings = await repo_image_ratings.get_all_image_ratings(image_id, db_session)
+
+    if not ratings:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ratings not found")
 
     return ratings

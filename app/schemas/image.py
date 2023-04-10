@@ -32,4 +32,8 @@ class ImagePublic(DateTimeModelMixin, ImageBase, IDModelMixin):
 
 class ImageCreateResponse(CoreModel):
     image: ImagePublic
-    detail: str = "Image successfully uploaded"
+    message: str = "Image successfully uploaded"
+
+
+class ImageRemoveResponse(CoreModel):
+    message: str = "Image successfully deleted"

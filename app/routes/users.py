@@ -1,35 +1,26 @@
 import asyncio
 from typing import Any
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    UploadFile,
-    File,
-    HTTPException,
-    status,
-)
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
 from app.database.models import User, UserRole
 from app.repository import users as repository_users
-from app.repository.users import user_update_is_active
-from app.schemas.user import (
-    UserPublic,
-    ProfileUpdate,
-)
+from app.repository import images as repository_images
+from app.schemas.user import UserPublic, ProfileUpdate
 
 from app.schemas import user as user_schemas
 from app.services import cloudinary
 from app.services.auth import AuthService, get_current_active_user
 from app.utils.filter import UserRoleFilter
+from config import settings
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/me/", response_model=user_schemas.UserPublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+@router.get("/me/", response_model=user_schemas.UserPublic, dependencies=[Depends(RateLimiter(times=30, seconds=60))])
 async def get_me(
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
@@ -57,9 +48,13 @@ async def update_avatar(
     :param current_user: User: Get the current user
     :return: The updated user object
     """
+    link, public_id = current_user.avatar.rsplit('/', maxsplit=1)
+    if not link.endswith(settings.cloudinary_folder):
+        public_id = None
+
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(
-        None, cloudinary.upload_image, file.file, current_user.avatar.rsplit('/', maxsplit=1)[1]
+        None, cloudinary.upload_image, file.file, public_id
     )
 
     if image is None:
@@ -168,46 +163,33 @@ async def update_user_profile(
     return await repository_users.update_user_profile(current_user.id, body, db)
 
 
-# TODO update method
-@router.get("/{user_id}", response_model=user_schemas.UserProfile,
+@router.get("/{username}", response_model=user_schemas.UserProfile,
             dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def get_user_profile(
-        user_id: int,
+        username: str,
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
-    The get_user function is used to retrieve a user's profile.
+    The get_user_profile function is a GET endpoint that returns the user profile of a given username.
+    It takes in an optional parameter, db, which is used to connect to the database. It also takes in another
+    optional parameter, current_user, which represents the currently logged-in user.
 
-    :param user_id: int: Get the user id from the url
-    :param db: AsyncSession: Pass in the database session
+    :param username: str: Get the username from the url
+    :param db: AsyncSession: Pass the database session to the function
     :param current_user: User: Get the current user
     :return: A userprofile object
     """
-    user = await repository_users.get_user_by_id(user_id, db)
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="No profile found with that username.")
-
-    num_photos = await repository_users.get_num_photos_by_user(user_id, db)
-
-    user_profile = user_schemas.UserProfile(
-        id=user.id,
-        username=user.username,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        email=user.email,
-        avatar=user.avatar,
-        created_at=user.created_at
-    )
+    user_profile = await repository_users.get_user_profile_by_username(username, db)
+    if not user_profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return user_profile
 
 
 @router.patch("/", response_model=UserPublic)
 async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(get_db),
-                              current_user: User = Depends(AuthService.get_current_user)) -> UserPublic:
+                              current_user: User = Depends(get_current_active_user)) -> UserPublic:
     """
     The update_user_profile function updates a user's profile.
 
@@ -226,8 +208,11 @@ async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(ge
 
 
 @router.post("/ban/{user_id}", dependencies=[Depends(UserRoleFilter(UserRole.admin))])
-async def ban_user(user_id: int, db: AsyncSession = Depends(get_db),
-                   current_user: UserRole = Depends(AuthService.get_current_user)):
+async def ban_user(
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: UserRole = Depends(get_current_active_user)
+) -> Any:
     """
     The ban_user function is used to ban a user.
     :param user_id: int: Specify the user id of the user to be banned
@@ -238,4 +223,5 @@ async def ban_user(user_id: int, db: AsyncSession = Depends(get_db),
     user = await repository_users.get_user_by_id(user_id, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return await user_update_is_active(user, False, db)
+
+    return await repository_users.user_update_is_active(user, False, db)

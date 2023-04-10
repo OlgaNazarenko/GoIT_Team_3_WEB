@@ -139,6 +139,21 @@ def formatting_image_url(public_id: str,
     return {'url': image.url, 'format': image.url_options}
 
 
+def remove_image(public_id: str) -> bool:
+    """
+    The remove_image function takes in a public_id string and returns True if the image was successfully removed from
+    Cloudinary. If the image is not found, or there is an error removing it, False will be returned.
+
+    :param public_id: str: Specify the public id of the image to be deleted
+    :return: A boolean value indicating whether the image was successfully removed
+    """
+    result = cloudinary.uploader.destroy(public_id=public_id)
+    if result['result'] == "ok":
+        return True
+
+    return False
+
+
 FORMAT_AVATAR = CroppingOrResizingTransformation(
     crop=CropMode.FILL,
     width=250,

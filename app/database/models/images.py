@@ -14,6 +14,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .tags import Tag
 from .base import Base
 from .users import User
+from .image_formats import ImageFormat
+from .image_comments import ImageComment
+from .image_raiting import ImageRating
 
 
 image_m2m_tag = Table(
@@ -37,5 +40,6 @@ class Image(Base):
 
     user: Mapped[User] = relationship(backref="images")
     tags: Mapped[Tag] = relationship("Tag", secondary=image_m2m_tag, backref="images", lazy='joined')
-
-    comments = relationship("ImageComment", back_populates="image", cascade="all, delete")
+    comments: Mapped[ImageComment] = relationship(backref="image", cascade="all, delete-orphan")
+    formats: Mapped[ImageFormat] = relationship(backref="image", cascade="all, delete-orphan")
+    ratings: Mapped[ImageRating] = relationship(backref="image", cascade="all, delete-orphan")
