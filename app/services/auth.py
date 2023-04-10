@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
 from app.repository import users as repository_users
-from app.database.models import User, UserRole
+from app.database.models import User
 from config import settings
 
 
@@ -177,7 +177,7 @@ class AuthService:
 
             if payload.get('scope') == 'access_token':
                 email = payload.get("sub")
-                if email is None or await cls._access_token_is_blacklist(email, token):
+                if email is None or await cls.token_is_blacklist(email, token):
                     raise credentials_exception
             else:
                 raise credentials_exception
@@ -224,27 +224,27 @@ class AuthService:
                                 detail="Invalid token for email verification")
 
     @classmethod
-    async def _access_token_is_blacklist(cls, email: str, token: str) -> bool:
+    async def token_is_blacklist(cls, email: str, jwt_token: str) -> bool:
         """
-        The access_token_is_blacklist function checks if the access token is in the blacklist.
+        The token_is_blacklist function checks if the access token is in the blacklist.
             Args:
                 email (str): The user's email address.
                 token (str): The user's access token.
 
         :param cls: Represent the class itself
         :param email: str: Get the token from redis, and the token: str parameter is used to check if it matches
-        :param token: str: Check if the token is blacklisted
+        :param jwt_token: str: Check if the token is blacklisted
         :return: A boolean value
         """
         rd_token = cls.redis.get(f"black-list:{email}")
 
-        if rd_token and token == rd_token.decode('utf-8'):
+        if rd_token and jwt_token == rd_token.decode('utf-8'):
             return True
 
         return False
 
     @classmethod
-    async def add_access_token_to_blacklist(cls, access_token: str) -> None:
+    async def add_token_to_blacklist(cls, jwt_token: str) -> None:
         """
         The logout function takes an access token and adds it to the black list.
         The function first decodes the JWT, then gets the email from it.
@@ -254,38 +254,16 @@ class AuthService:
         the number of seconds remaining until expiration.
 
         :param cls: Represent the class itself
-        :param access_token: str: Get the email from the token
+        :param jwt_token: str: Get the email from the token
         :return: None
         """
-        payload = cls.__decode_jwt(access_token)
+        payload = cls.__decode_jwt(jwt_token)
 
         email: str = payload.get('sub')
         expire_seconds = payload.get('exp') - timegm(datetime.utcnow().utctimetuple())
 
-        cls.redis.set(f"black-list:{email}", access_token.encode('utf-8'))
+        cls.redis.set(f"black-list:{email}", jwt_token.encode('utf-8'))
         cls.redis.expire(f"black-list:{email}", expire_seconds)
-
-    @classmethod
-    async def is_admin_or_moderator(cls, current_user: User = Depends(get_current_user)):
-        if not current_user.is_admin and not current_user.is_moderator:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
-        return current_user
-
-    def role_required(*roles: UserRole):
-        """
-        The role_required function is a decorator that checks if the user has the required role.
-        If not, it raises an HTTPException with status code 403 (Forbidden).
-        :param roles: UserRole: Specify the role that is required to access a route
-        :return: A function that can be used as a dependency in any endpoint
-        :doc-author: Trelent
-        """
-
-        async def _role_required(current_user: User = Depends(AuthService.get_current_user)):
-            if current_user.role != roles:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
-            return current_user
-
-        return _role_required
         
 
 async def get_current_active_user(current_user: User = Depends(AuthService.get_current_user)) -> User:

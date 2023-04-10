@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import Image, Tag
 from typing import Optional
@@ -32,14 +32,15 @@ async def create_image(user_id: int, description: str, tags: list[str], public_i
     :param db: AsyncSession: Pass in the database session
     :return: An image object
     """
-    tags = await get_or_create_tags(tags, db)
     image = Image(
         user_id=user_id,
         description=description,
-        tags=tags,
         public_id=public_id
     )
     db.add(image)
+
+    if tags:
+        image.tags = await get_or_create_tags(tags, db)
 
     await db.commit()
 
@@ -69,40 +70,46 @@ async def update_description(image_id: int, description: str, tags: list[str], d
     return image
 
 
-async def delete_image(image_id: int, db: AsyncSession) -> Optional[Image]:
+async def delete_image(image: Image, db: AsyncSession) -> None:
     """
-    The delete_image function deletes an image in the database.
-    :param image_id: str: Get identifier for the image
-    :param db: AsyncSession: Pass in the database session to the function
-    :return: An image object
+    The delete_image function deletes an image from the database.
+
+    :param image: Image: Pass the image object to be deleted
+    :param db: AsyncSession: Pass in the database session
+    :return: None, which is the default return value for a function that doesn't explicitly return anything
     """
-    image = await get_image_by_id(image_id, db)
-
-    if image:
-        await db.delete(image)
-        await db.commit()
-
-    return image
+    await db.delete(image)
+    await db.commit()
 
 
-async def get_images(skip: int, limit: int, description: str, tags: list[str], user_id: int, db: AsyncSession) -> list[Image]:
-
+async def get_images(
+        skip: int,
+        limit: int,
+        description: str,
+        tags: list[str],
+        image_id: int,
+        user_id: int,
+        db: AsyncSession
+) -> list[Image]:
     """
-    The get_images function takes in a skip, limit, description, tags and user_id.
-    It then queries the database for images that match the given parameters.
-    If no parameters are given it will return all images.
+    The get_images function is used to retrieve images from the database.
+    It takes in a skip, limit, description, tags and image_id as parameters.
+    The skip parameter is used to determine how many images should be skipped before returning results.
+    The limit parameter determines how many results should be returned after skipping the specified number of images.
+    If no value for either of these parameters are provided then they default to 0 and 10 respectively (i.e., return all).
+    The description parameter allows you to search for an image by its description field using SQL LIKE syntax (e.g., %description% will match any image with
 
-    :param skip: int: Skip a certain number of images
-    :param limit: int: Limit the number of images that are returned
-    :param description: str: Filter images by description
+    :param skip: int: Skip the first n images
+    :param limit: int: Limit the number of images returned
+    :param description: str: Filter the images by description
     :param tags: list[str]: Filter the images by tags
-    :param user_id: int: Filter the images by user id
-    :param db: AsyncSession: Pass the database session to the function
-    :return: A list of images
-    :doc-author: Trelent
+    :param image_id: int: Filter the images by their id
+    :param user_id: int: Filter images by user_id
+    :param db: AsyncSession: Pass the database connection
+    :return: A list of image objects
     """
-
     query = select(Image)
+
     if description:
         query = query.filter(Image.description.like(f'%{description}%'))
     if tags:
@@ -110,7 +117,9 @@ async def get_images(skip: int, limit: int, description: str, tags: list[str], u
             query = query.filter(Image.tags.any(Tag.name.ilike(f'%{tag}%')))
     if user_id:
         query = query.filter(Image.user_id == user_id)
+    if image_id:
+        query = query.filter(Image.id == image_id)
 
     image = await db.scalars(query.offset(skip).limit(limit))
 
-    return image.unique().all()
+    return image.unique().all()  # noqa

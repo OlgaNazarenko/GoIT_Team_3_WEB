@@ -23,10 +23,25 @@ cloudinary = "^1.32.0"
 libgravatar = "^1.0.4"
 asyncpg = "^0.27.0"
 psycopg2-binary = "^2.9.5"
-pytest = "^7.2.2"
 qrcode = "^7.4.2"
 
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.3.0"
+pytest-asyncio = "^0.21.0"
+httpx = "^0.23.3"
+pytest-mock = "^3.10.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+#addopts = "--cov=. --cov-report html tests/"
+addopts = "-p no:warnings tests/"
+omit = [
+    "tests/*",
+    "main.pi",
+    "some/path/*"
+    ]

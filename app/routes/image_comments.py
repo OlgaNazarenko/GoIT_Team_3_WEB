@@ -8,6 +8,7 @@ from app.database.connect import get_db
 from app.database.models import UserRole, User
 from app.schemas.image_comments import CommentBase, CommentPublic, CommentUpdate
 from app.repository import comments as repository_comments
+from app.repository import images as repository_images
 from app.utils.filter import UserRoleFilter
 from app.services.auth import get_current_active_user
 
@@ -29,6 +30,10 @@ async def create_comment(
     :param current_user: User: Get the user who is currently logged in
     :return: A comment object
     """
+    image = await repository_images.get_image_by_id(body.image_id, db)
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
+
     return await repository_comments.create_comment(
         current_user.id, body.image_id, body.data.strip(), db
     )
@@ -38,7 +43,7 @@ async def create_comment(
     '/',
     response_model=List[CommentPublic],
     description='No more than 10 requests per minute',
-    dependencies=[Depends(RateLimiter(times=10, seconds=60)), Depends(UserRoleFilter(role=UserRole.moderator))]
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))]
 )
 async def get_comments_by_image_or_user_id(
         image_id: Optional[int] = None,
@@ -61,7 +66,7 @@ async def get_comments_by_image_or_user_id(
     :param current_user: User: Get the current user from the database
     :return: A list of comments
     """
-    if user_id is None or image_id is None:
+    if user_id is None and image_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Both user_id or image_id must be provided")
 
@@ -92,7 +97,7 @@ async def get_comment(
     return comment
 
 
-# TODO moderator -> cannot access and update other comments, only his
+# TODO лише модератор може редагувати комантар, чи власник також?
 @router.put("/", response_model=CommentPublic,
             dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
 async def update_comment(

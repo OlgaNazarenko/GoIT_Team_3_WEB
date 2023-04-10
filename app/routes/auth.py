@@ -15,6 +15,7 @@ from app.services.auth import AuthService, get_current_active_user
 from app.services.email import send_email_confirmed, send_email_reset_password
 from config import Template
 
+
 router = APIRouter(prefix='/auth', tags=["Authorization"])
 security = HTTPBearer()
 
@@ -99,7 +100,7 @@ async def logout(
     :return: A message saying that the logout was successful
     """
     access_token = request.headers['Authorization'].split(' ', maxsplit=1)[1]
-    await AuthService.add_access_token_to_blacklist(access_token)
+    await AuthService.add_token_to_blacklist(access_token)
 
     await repository_users.update_token(current_user, None, db)
 
@@ -212,6 +213,10 @@ async def reset_password_template(
     :return: A template response object, which is a subclass of response
     """
     email = await AuthService.get_email_from_token(token)
+
+    if await AuthService.token_is_blacklist(email, token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The link is no longer active")
+
     user = await repository_users.get_user_by_email(email, db)
 
     if user is None:
@@ -247,5 +252,7 @@ async def new_password(
 
     password = AuthService.get_password_hash(password)
     await repository_users.update_password(user.id, password, db)
+
+    await AuthService.add_token_to_blacklist(token)
 
     return {"status": 'ok'}

@@ -4,8 +4,8 @@ from .core import CoreModel, DateTimeModelMixin, IDModelMixin
 
 
 class CommentBase(CoreModel):
-    data: constr(min_length=5, max_length=500)
     image_id: int
+    data: constr(min_length=5, max_length=500)
 
 
 class CommentUpdate(CoreModel):

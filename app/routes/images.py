@@ -1,63 +1,97 @@
 import asyncio
-
 from typing import Optional, Any
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query, Body
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
 from app.database.models import User, UserRole
 from app.repository import images as repository_images
-from app.schemas.image import (
-    ImageCreateResponse,
-    ImagePublic,
-)
+from app.schemas.image import ImageCreateResponse, ImagePublic, ImageRemoveResponse
 from app.services import cloudinary
-from app.services.auth import get_current_active_user, AuthService
+from app.services.auth import get_current_active_user
+from .docs import images as docs
+
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
 
-#  TODO tags validation
 @router.post(
     "/", response_model=ImageCreateResponse, response_model_by_alias=False, status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))]
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    description=docs.UPLOAD_IMAGE
 )
 async def upload_image(
         file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
-        tags: list[str] = Form(alias="tag", min_length=3, max_length=50),
+        tags: Optional[list[str]] = Form(None, alias="tag", min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
     The upload_image function is used to upload an image file to the cloudinary server.
-    The function takes in a file, description, and tags as parameters. The file parameter is required and must be of type UploadFile (a FastAPI File).
-    The description parameter is optional but if provided it must be between 10-1200 characters long. The tags parameter is also optional but if provided
-    it must contain at least 3 words with each word being no longer than 50 characters long.
+    The function takes in a file, description and tags as parameters. The file parameter is of type UploadFile which
+    is a FastAPI class that represents uploaded files. The description parameter is of type str and has minimum length
+    of 10 characters and maximum length of 1200 characters while the tags parameter is optional with each tag having
+    minimum length 3 characters and maximum 50 characters.
 
-    :param file: UploadFile: Get the file from the request
-    :param description: str: Get the description of the image
-    :param tags: list[str]: Receive a list of tags from the client
+    :param file: UploadFile: Receive the image file from the client
+    :param description: str: Get the description of the image from the request body
+    :param tags: Optional[list[str]]: Validate the tag list
     :param db: AsyncSession: Get the database session
-    :param current_user: User: Get the user who is currently logged in
-    :param : Specify the type of file that will be uploaded
-    :return: A dictionary with the image and a detail message
+    :param current_user: User: Get the current user that is logged in
+    :param : Get the image id from the url
+    :return: A dictionary with the image and detail keys
+    :doc-author: Trelent
     """
-    if len(tags) > 5:
+    if tags and len(tags) > 5:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Maximum five tags can be added")
+
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(None, cloudinary.upload_image, file.file)
 
     if image is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid image file")
+
     image = await repository_images.create_image(current_user.id, description.strip(), tags, image['public_id'], db)
 
-    return {"image": image, "detail": "Image successfully uploaded"}
+    return {"image": image, "message": "Image successfully uploaded"}
 
 
-@router.get("/{image_id}", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=10))])
+@router.get("/", response_model=list[ImagePublic], description="Get all images",
+            dependencies=[Depends(RateLimiter(times=30, seconds=60))])
+async def get_images(
+        skip: int = 0,
+        limit: int = Query(default=10, ge=1, le=100),
+        description: Optional[str] = Query(default=None, min_length=3, max_length=1200),
+        tags: Optional[list[str]] = Query(default=None, max_length=50),
+        image_id: Optional[int] = Query(default=None, ge=1),
+        user_id: Optional[int] = Query(default=None, ge=1),
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The get_images function is used to retrieve images from the database.
+        The function takes in a skip, limit, description, tags and user_id as parameters.
+        The skip parameter is used to determine how many images should be skipped before returning results.
+        The limit parameter determines how many results should be returned after skipping the specified number of images.
+        If no value for limit is provided then 10 will be assumed by default (max 100).
+
+    :param skip: int: Skip a number of images when returning the list
+    :param limit: int: Limit the number of images returned
+    :param description: Optional[str]: Filter the images by description
+    :param tags: Optional[list[str]]: Filter the images by tags
+    :param image_id: Optional[int]: Get the image by id
+    :param user_id: Optional[int]: Filter the images by user_id
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the current user from the database
+    :return: A list of images
+    """
+    return await repository_images.get_images(skip, limit, description, tags, image_id, user_id, db)
+
+
+@router.get("/{image_id}", response_model=ImagePublic)
 async def get_image(
         image_id: int,
         db: AsyncSession = Depends(get_db),
@@ -78,12 +112,11 @@ async def get_image(
     return image
 
 
-# TODO нужно еще добавить возможность изменения тегов картинки
-@router.patch("/description", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def update_description(
-        image_id: int,
-        description: str = Form(min_length=10, max_length=1200),
-        tags: Optional[list[str]] = Form(None, alias="tag", min_length=3, max_length=50),
+@router.patch("/", response_model=ImagePublic, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def update_image_data(
+        image_id: int = Body(ge=1),
+        description: str = Body(min_length=10, max_length=1200),
+        tags: Optional[list[str]] = Body(None, alias="tag", min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
@@ -92,15 +125,10 @@ async def update_description(
 
     :param image_id: int: Identify the image that we want to delete
     :param description: str: Update the description of an image
-    :param max_length: Set the maximum length of a string
     :param tags: Optional[list[str]]: Get the tags from the request body
-    :param alias: Change the name of the parameter in swagger
-    :param min_length: Set the minimum length of the string
-    :param max_length: Limit the length of the description
     :param db: AsyncSession: Get the database session
     :param current_user: User: Get the user who is currently logged in
     :return: An image with a new description and tags
-    :doc-author: Trelent
     """
     if len(tags) > 5:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -119,7 +147,8 @@ async def update_description(
     return updated_image
 
 
-@router.delete("/", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+@router.delete("/{image_id}", response_model=ImageRemoveResponse,
+               dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def delete_image(
         image_id: int,
         db: AsyncSession = Depends(get_db),
@@ -139,27 +168,13 @@ async def delete_image(
     image = await repository_images.get_image_by_id(image_id, db)
 
     if image is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not found image")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
     if current_user.role != UserRole.admin and image.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    deleted_image = await repository_images.delete_image(image_id, db)
-    if deleted_image is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, cloudinary.remove_image, image.public_id)
+    await repository_images.delete_image(image, db)
 
-    return deleted_image
-
-
-@router.get("/", response_model=list[ImagePublic], description="Get all images",
-            dependencies=[Depends(RateLimiter(times=10, seconds=60))])
-async def get_images(skip: int = 0, limit: int = Query(default=10, ge=1, le=100),
-                     description: Optional[str] = Query(default=None, min_length=3, max_length=1200),
-                     tags: list[str] | None = Query(default=None, max_length=50),
-                     user_id: Optional[int] = Query(default=None, ge=1, le=100),
-                     db: AsyncSession = Depends(get_db),
-                     current_user: User = Depends(AuthService.get_current_user)):
-
-    images = await repository_images.get_images(skip, limit, description, tags, user_id, db)
-
-    return images
+    return {"message": "Image successfully deleted"}

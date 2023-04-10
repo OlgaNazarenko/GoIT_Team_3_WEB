@@ -1,10 +1,10 @@
 from typing import Optional
 
-from sqlalchemy import select, update, or_, func
+from sqlalchemy import select, update, or_, func, RowMapping
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import User, Image, UserRole
+from app.database.models import User, UserRole, Image
 from app.schemas.user import UserCreate, ProfileUpdate
 from app.services.gravatar import get_gravatar
 
@@ -60,12 +60,12 @@ async def get_user_by_email_or_username(email: str, username: str, db: AsyncSess
     )
 
 
-async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+async def get_user_by_username(username: str, db: AsyncSession) -> Optional[User]:
     """
     The get_user_by_username function returns a user object from the database based on the username.
 
-    :param db: AsyncSession: Pass in the database session
     :param username: str: Filter the query
+    :param db: AsyncSession: Pass in the database session
     :return: A user object
     """
     return await db.scalar(
@@ -88,7 +88,7 @@ async def get_user_by_id(user_id: int, db: AsyncSession) -> Optional[User]:
     )
 
 
-async def update_token(user: User, token: str | None, db: AsyncSession) -> None:
+async def update_token(user: User, token: Optional[str], db: AsyncSession) -> None:
     """
     The update_token function updates the refresh token for a user.
 
@@ -133,14 +133,13 @@ async def update_password(user_id: int, password: str, db: AsyncSession) -> User
     :param db: AsyncSession: Pass the database session to the function
     :return: A user object, which is the updated user
     """
-    async with db.begin():
-        user = await db.scalar(
-            update(User)
-            .values(password=password)
-            .filter(User.id == user_id)
-            .returning(User)
-        )
-        await db.commit()
+    user = await db.scalar(
+        update(User)
+        .values(password=password)
+        .filter(User.id == user_id)
+        .returning(User)
+    )
+    await db.commit()
 
     await db.refresh(user)
 
@@ -157,14 +156,13 @@ async def update_email(user_id: int, email: str, db: AsyncSession) -> Optional[U
     :return: The updated user object
     """
     try:
-        async with db.begin():
-            user = await db.scalar(
-                update(User)
-                .values(email=email)
-                .filter(User.id == user_id)
-                .returning(User)
-            )
-            await db.commit()
+        user = await db.scalar(
+            update(User)
+            .values(email=email)
+            .filter(User.id == user_id)
+            .returning(User)
+        )
+        await db.commit()
     except IntegrityError as e:
         return
 
@@ -183,22 +181,6 @@ async def confirmed_email(user: User, db: AsyncSession) -> None:
     """
     user.email_verified = True
     await db.commit()
-
-
-async def get_num_photos_by_user(user_id: int, db: AsyncSession) -> int:
-    """
-    The get_num_photos_by_user function returns the number of photos a user has uploaded to the database.
-
-    :param user_id: int: Specify the user_id of the user whose photos we want to count
-    :param db: AsyncSession: Pass the database connection to the function
-    :return: The number of photos a user has
-    """
-    num_photos = await db.scalar(
-        select(func.count(Image.id))
-        .filter(Image.user_id == user_id)
-    )
-
-    return num_photos
 
 
 async def update_user_profile(user_id: int, body: ProfileUpdate, db: AsyncSession) -> User:
@@ -243,9 +225,36 @@ async def user_update_role(user: User, role: UserRole, db: AsyncSession) -> User
 
 
 async def user_update_is_active(user: User, is_active: bool, db: AsyncSession) -> User:
+    """
+    The user_update_is_active function updates the is_active field of a user.
+
+    :param user: User: Specify the user that is being updated
+    :param is_active: bool: Set the user's is_active attribute to true or false
+    :param db: AsyncSession: Pass the database session to the function
+    :return: The updated user
+    """
     user.is_active = is_active
+
     await db.commit()
     await db.refresh(user)
-    
+
     return user
-    
+
+
+async def get_user_profile_by_username(username: str, db: AsyncSession) -> RowMapping:
+    """
+    The get_user_profile_by_username function returns a user's profile information.
+
+    :param username: str: Filter the user by username
+    :param db: AsyncSession: Pass a database session to the function
+    :return: A row mapping object
+    """
+    user = await db.execute(
+        select(User.id, User.username, User.first_name, User.last_name, User.avatar, User.created_at,
+               func.count(Image.id).label('number_of_images'))
+        .outerjoin(Image)
+        .filter(User.username == username)
+        .group_by(User.id)
+    )
+
+    return user.mappings().first()

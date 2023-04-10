@@ -56,8 +56,8 @@ async def ban_ips(request: Request, call_next: Callable):
     :param call_next: Callable: Pass the next function in the middleware chain
     :return: The response from the next function in the pipeline
     """
-    if ip_address(request.client.host) in BANNED_IPS:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "You are banned"})
+    # if ip_address(request.client.host) in BANNED_IPS:
+    #     return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "You are banned"})
     response = await call_next(request)
     return response
 

@@ -15,6 +15,24 @@ from app.services.auth import get_current_active_user
 router = APIRouter(prefix='/tags', tags=["tags"])
 
 
+@router.post("/", response_model=list[TagResponse])
+async def get_or_create_tags(
+        tags,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The get_or_create_tags function is used to get or create tags.
+
+    :param tags: Get the tags from the database
+    :param db: AsyncSession: Pass the database session to the function
+    :param current_user: User: Get the current user who is logged in
+    :return: A list of tag objects
+    """
+    tags = await repository_tags.get_or_create_tags(tags, db)
+    return tags
+
+
 @router.get("/", response_model=list[TagResponse])
 async def read_tags(
         skip: int = 0,
@@ -31,8 +49,7 @@ async def read_tags(
     :param current_user: User: Get the current user
     :return: A list of tag objects
     """
-    tags = await repository_tags.get_tags(skip, limit, db)
-    return tags
+    return await repository_tags.get_tags(skip, limit, db)
 
 
 @router.get("/{tag_id}", response_model=TagResponse)
@@ -53,22 +70,16 @@ async def get_tag(
     tag = await repository_tags.get_tag_by_id(tag_id, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
     return tag
 
 
-@router.post("/", response_model=list[TagResponse])
-async def get_or_create_tags(tags, db: AsyncSession = Depends(get_db),
-                             current_user: User = Depends(get_current_active_user)):
-    tags = await repository_tags.get_or_create_tags(tags, db)
-    return tags
-
-
 @router.put(
-    "/{tag_id}",
+    "/",
     response_model=TagResponse,
     dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
 async def update_tag(
-        body: TagBase, tag_id: int,
+        body: TagBase,
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
@@ -83,9 +94,10 @@ async def update_tag(
     :param current_user: User: Get the current user
     :return: A tag object
     """
-    tag = await repository_tags.update_tag(tag_id, body, db)
+    tag = await repository_tags.update_tag(body.tag_id, body, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
     return tag
 
 
@@ -110,4 +122,5 @@ async def remove_tag(
     tag = await repository_tags.remove_tag(tag_id, db)
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
     return tag
