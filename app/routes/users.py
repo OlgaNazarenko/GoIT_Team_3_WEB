@@ -8,13 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.connect import get_db
 from app.database.models import User, UserRole
 from app.repository import users as repository_users
-from app.repository import images as repository_images
 from app.schemas.user import UserPublic, ProfileUpdate
 
 from app.schemas import user as user_schemas
 from app.services import cloudinary
 from app.services.auth import AuthService, get_current_active_user
-from app.utils.filter import UserRoleFilter
+from app.utils.filters import UserRoleFilter
 from config import settings
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -140,29 +139,6 @@ async def change_user_role(
     return await repository_users.user_update_role(user, body.role, db)  # noqa
 
 
-@router.patch("/", response_model=user_schemas.UserPublic)
-async def update_user_profile(
-        body: user_schemas.ProfileUpdate,
-        db: AsyncSession = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
-) -> Any:
-    """
-    The update_user_profile function updates the user's profile.
-
-    :param body: ProfileUpdate: Pass the data from the request body to this function
-    :param db: AsyncSession: Pass the database session to the repository layer
-    :param current_user: User: Get the current user from the database
-    :return: A dictionary with the updated user information
-    """
-    if body.username and await repository_users.get_user_by_username(username=body.username, db=db):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="That username is already taken. Please try another one."
-        )
-
-    return await repository_users.update_user_profile(current_user.id, body, db)
-
-
 @router.get("/{username}", response_model=user_schemas.UserProfile,
             dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def get_user_profile(
@@ -187,16 +163,19 @@ async def get_user_profile(
     return user_profile
 
 
-@router.patch("/", response_model=UserPublic)
-async def update_user_profile(body: ProfileUpdate, db: AsyncSession = Depends(get_db),
-                              current_user: User = Depends(get_current_active_user)) -> UserPublic:
+@router.patch("/", response_model=user_schemas.UserPublic)
+async def update_user_profile(
+        body: user_schemas.ProfileUpdate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
     """
-    The update_user_profile function updates a user's profile.
+    The update_user_profile function updates the user's profile.
 
-    :param body: ProfileUpdate: Specify the type of data that is expected to be passed in
-    :param db: AsyncSession: Pass in the database session
-    :param current_user: User: Get the current user's id
-    :return: A model of UserPublic object
+    :param body: ProfileUpdate: Pass the data from the request body to this function
+    :param db: AsyncSession: Pass the database session to the repository layer
+    :param current_user: User: Get the current user from the database
+    :return: A dictionary with the updated user information
     """
     if body.username and await repository_users.get_user_by_username(username=body.username, db=db):
         raise HTTPException(
@@ -225,3 +204,24 @@ async def ban_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return await repository_users.user_update_is_active(user, False, db)
+
+
+@router.post("/unban/{user_id}", dependencies=[Depends(UserRoleFilter(UserRole.admin))])
+async def unban_user(
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: UserRole = Depends(get_current_active_user)
+) -> Any:
+    """
+    The unban_user function is used to unban a user.
+
+    :param user_id: int: Get the user id from the request
+    :param db: AsyncSession: Get the database connection
+    :param current_user: UserRole: Get the current user from the database
+    :return: A dict
+    """
+    user = await repository_users.get_user_by_id(user_id, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    return await repository_users.user_update_is_active(user, True, db)

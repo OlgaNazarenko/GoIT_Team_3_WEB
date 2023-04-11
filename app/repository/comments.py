@@ -85,8 +85,6 @@ async def update_comment(comment_id: int, data: str, db: AsyncSession) -> ImageC
 
     await db.commit()
 
-    await db.refresh(comment)
-
     return comment
 
 

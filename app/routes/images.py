@@ -13,7 +13,6 @@ from app.services import cloudinary
 from app.services.auth import get_current_active_user
 from .docs import images as docs
 
-
 router = APIRouter(prefix="/images", tags=["Images"])
 
 
@@ -24,7 +23,7 @@ router = APIRouter(prefix="/images", tags=["Images"])
 )
 async def upload_image(
         file: UploadFile = File(), description: str = Form(min_length=10, max_length=1200),
-        tags: Optional[list[str]] = Form(None, alias="tag", min_length=3, max_length=50),
+        tags: Optional[list[str]] = Form(None),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -42,11 +41,16 @@ async def upload_image(
     :param current_user: User: Get the current user that is logged in
     :param : Get the image id from the url
     :return: A dictionary with the image and detail keys
-    :doc-author: Trelent
     """
     if tags and len(tags) > 5:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Maximum five tags can be added")
+
+    if tags:
+        for tag in tags:
+            if not 3 <= len(tag) <= 50:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                    detail=f'Invalid length tag: {tag}')
 
     loop = asyncio.get_event_loop()
     image = await loop.run_in_executor(None, cloudinary.upload_image, file.file)

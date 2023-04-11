@@ -104,7 +104,7 @@ async def logout(
 
     await repository_users.update_token(current_user, None, db)
 
-    return {"detail": "Successful exit"}
+    return {"message": "Successful exit"}
 
 
 @router.get('/refresh_token', response_model=TokenResponse)

@@ -184,7 +184,7 @@ class AuthService:
         except JWTError as e:
             raise credentials_exception
 
-        user = None  # cls.redis.get(f"user:{email}") TODO лише для розробки.
+        user = cls.redis.get(f"user:{email}")# TODO лише для розробки.
         if user is None:
 
             user = await repository_users.get_user_by_email(email, db)
