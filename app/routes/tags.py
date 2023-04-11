@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import UserRole, User
@@ -9,7 +9,7 @@ from app.database.connect import get_db
 from app.schemas.tag import TagBase, TagResponse
 from app.repository import tags as repository_tags
 
-from app.utils.filter import UserRoleFilter
+from app.utils.filters import UserRoleFilter
 from app.services.auth import get_current_active_user
 
 router = APIRouter(prefix='/tags', tags=["tags"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix='/tags', tags=["tags"])
 
 @router.post("/", response_model=list[TagResponse])
 async def get_or_create_tags(
-        tags,
+        tags: list[str] = Body(min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:

@@ -1,10 +1,9 @@
-from sqlalchemy import select, delete, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import Image, Tag
 from typing import Optional
-from sqlalchemy.orm.exc import UnmappedInstanceError
 
-from app.routes.tags import get_or_create_tags
+from .tags import get_or_create_tags
 
 
 async def get_image_by_id(image_id: int, db: AsyncSession) -> Image:

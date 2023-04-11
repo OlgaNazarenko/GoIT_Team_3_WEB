@@ -42,7 +42,7 @@ async def get_image_formats_by_image_id(user_id: int, image_id: int, db: AsyncSe
     :param user_id: int: Identify the user
     :param image_id: int: Filter the images by image_id
     :param db: AsyncSession: Pass the database session to the function
-    :return: A list of imageformat objects
+    :return: A list of image format objects
     """
     images = await db.scalars(
         select(ImageFormat)

@@ -9,7 +9,7 @@ from app.database.models import UserRole, User
 from app.schemas.image_comments import CommentBase, CommentPublic, CommentUpdate
 from app.repository import comments as repository_comments
 from app.repository import images as repository_images
-from app.utils.filter import UserRoleFilter
+from app.utils.filters import UserRoleFilter
 from app.services.auth import get_current_active_user
 
 

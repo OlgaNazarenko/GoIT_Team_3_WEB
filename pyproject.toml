@@ -31,6 +31,8 @@ pytest = "^7.3.0"
 pytest-asyncio = "^0.21.0"
 httpx = "^0.23.3"
 pytest-mock = "^3.10.0"
+trio = "^0.22.0"
+pytest-cov = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -39,7 +41,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 #addopts = "--cov=. --cov-report html tests/"
-addopts = "-p no:warnings tests/"
+#addopts = "-p no:warnings tests/"
+addopts = "-p no:warnings --cov=. tests/"
 omit = [
     "tests/*",
     "main.pi",
