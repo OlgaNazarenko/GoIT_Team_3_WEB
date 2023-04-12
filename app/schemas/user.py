@@ -1,5 +1,10 @@
-from pydantic import EmailStr, constr, Field
+from datetime import datetime
+from enum import StrEnum
+from typing import Optional
 
+from pydantic import EmailStr, constr
+
+from app.database.models import UserRole
 from .core import DateTimeModelMixin, IDModelMixin, CoreModel
 
 
@@ -34,12 +39,6 @@ class UserCreateResponse(CoreModel):
     detail: str = "User successfully created"
 
 
-class TokenResponse(CoreModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
 class UserPasswordUpdate(CoreModel):
     old_password: constr(min_length=6, max_length=20)
     new_password: constr(min_length=6, max_length=20)
@@ -47,3 +46,31 @@ class UserPasswordUpdate(CoreModel):
 
 class EmailModel(CoreModel):
     email: EmailStr
+
+
+class ChangeRoleEnum(StrEnum):
+    user = UserRole.user
+    moderator = UserRole.moderator
+
+
+class ChangeRole(CoreModel):
+    user_id: int
+    role: ChangeRoleEnum
+
+
+class UserProfile(IDModelMixin):
+    username: str
+    first_name: str
+    last_name: str
+    avatar: str
+    number_of_images: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class ProfileUpdate(CoreModel):
+    username: Optional[constr(min_length=3, max_length=20, regex="[a-zA-Z0-9_-]+$")] = None
+    first_name: Optional[constr(min_length=3, max_length=100)] = None
+    last_name: Optional[constr(min_length=3, max_length=100)] = None

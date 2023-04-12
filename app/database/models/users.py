@@ -61,6 +61,6 @@ class User(Base):
         define our event listener after the class has been fully defined, but before it's used.
 
         :param cls: Pass the class object to the function
-        :return: The event
         """
         event.listen(cls, 'before_insert', cls.__set_user_role)
+
