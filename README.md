@@ -55,7 +55,7 @@ The API supports the following endpoints described in project documentation [GoI
 ### Our Team 3:
 Developer: [Olga Nazarenko](https://github.com/OlgaNazarenko)  
 Developer: [Serhii Pidkopai](https://github.com/SSP0d)  
-Developer: [Valerii Tretiakov](https://github.com/valeri7122)  
+Developer: [Valeri Tretiakov](https://github.com/valeri7122)  
 Developer: [Taras Plaksii](https://github.com/TT1410)  
 Developer + Scrum Muster: [Yaroslav Zhuk](https://github.com/YaroslavZq)  
 Developer + Team Lead : [Andrii Cheban](https://github.com/AndrewCheUA)
