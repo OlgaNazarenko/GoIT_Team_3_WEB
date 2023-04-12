@@ -1,5 +1,4 @@
-import pytest_asyncio
-from pytest import fixture, mark
+from pytest import mark
 from fastapi import status
 from sqlalchemy import select
 
@@ -193,7 +192,7 @@ class TestChangeRole:
     url_path = "api/users/change-role"
     new_user = {}
 
-    async def test_was_successfully(self, client, access_token, session, user):
+    async def test_was_successfully(self, client, access_token, user):
         TestChangeRole.new_user = user.copy()
         TestChangeRole.new_user['username'] = "new_user"
         TestChangeRole.new_user['email'] = "new.email@test.com"
@@ -261,7 +260,7 @@ class TestUpdateProfile:
     @mark.usefixtures('mock_rate_limit')
     async def test_was_successfully(self, client, access_token, user):
         body = {
-            "username": "username_new",
+            "username": "usernew",
             "first_name": "Степан",
             "last_name": "Гіга"
         }

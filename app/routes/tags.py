@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import UserRole, User
 from app.database.connect import get_db
 
-from app.schemas.tag import TagBase, TagResponse
+from app.schemas.tag import TagUpdate, TagResponse
 from app.repository import tags as repository_tags
 
 from app.utils.filters import UserRoleFilter
@@ -79,7 +79,7 @@ async def get_tag(
     response_model=TagResponse,
     dependencies=[Depends(UserRoleFilter(role=UserRole.moderator))])
 async def update_tag(
-        body: TagBase,
+        body: TagUpdate,
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:

@@ -2,8 +2,11 @@ from .core import CoreModel, IDModelMixin, DateTimeModelMixin
 
 
 class TagBase(CoreModel):
-    tag_id: int
     name: str
+
+
+class TagUpdate(TagBase):
+    tag_id: int
 
 
 class TagResponse(DateTimeModelMixin, TagBase, IDModelMixin):
