@@ -120,7 +120,7 @@ async def get_image(
 async def update_image_data(
         image_id: int = Body(ge=1),
         description: str = Body(min_length=10, max_length=1200),
-        tags: Optional[list[str]] = Body(None, alias="tag", min_length=3, max_length=50),
+        tags: Optional[list[str]] = Body(None, min_length=3, max_length=50),
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
@@ -134,14 +134,14 @@ async def update_image_data(
     :param current_user: User: Get the user who is currently logged in
     :return: An image with a new description and tags
     """
-    if len(tags) > 5:
+    if tags and len(tags) > 5:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Maximum five tags can be added")
 
     image = await repository_images.get_image_by_id(image_id, db)
 
     if image is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not found image")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image")
 
     if current_user.role != UserRole.admin and image.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -158,7 +158,6 @@ async def delete_image(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
 ) -> Any:
-
     """
     The delete_image function deletes an image from the database and cloudinary.
 

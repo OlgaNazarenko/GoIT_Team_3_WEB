@@ -92,7 +92,9 @@ async def mock_auth_redis(mocker):
 async def access_token(client, user, session) -> dict:
     mock.patch('app.routes.auth.send_email_confirmed')
 
-    client.post("/api/auth/signup", json=user)
+    res = client.post("/api/auth/signup", json=user)
+    if res.status_code == status.HTTP_201_CREATED:
+        user['id'] = res.json()['user']['id']
 
     current_user: User = await session.scalar(select(User).filter(User.email == user['email']))
     current_user.email_verified = True

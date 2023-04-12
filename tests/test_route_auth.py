@@ -14,6 +14,8 @@ class TestSignup:
 
         response = client.post(self.url_path, json=user)
 
+        user['id'] = response.json()['user']['id']
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["user"]["role"] == UserRole.admin
         assert response.json()["user"]["email"] == user["email"]
