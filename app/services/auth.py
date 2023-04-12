@@ -93,7 +93,6 @@ class AuthService:
         :param expires_delta: Optional[float]: Set the expiration time of the token
         :return: A string that is the access token
         """
-        expires_delta = 86_400  # TODO термін дії токена 24 години лише для розробки!
         expire = datetime.utcnow() + timedelta(seconds=expires_delta or 15 * 60)
         return cls.__encode_jwt(data, datetime.utcnow(), expire, "access_token")
 
@@ -184,7 +183,7 @@ class AuthService:
         except JWTError as e:
             raise credentials_exception
 
-        user = cls.redis.get(f"user:{email}")# TODO лише для розробки.
+        user = cls.redis.get(f"user:{email}")
         if user is None:
 
             user = await repository_users.get_user_by_email(email, db)

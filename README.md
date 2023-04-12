@@ -1,7 +1,5 @@
-# GoIT Team 3 WEB project
-
-## REST API Service for Posting, Transforming and Commenting Images
-This is a REST API service that allows users to post images, transform them and comment on them. It is built using Python, FastAPI, SQLAlchemy, Cloudinary and qrcode.
+## REST API Service for Posting, Transforming, and Commenting on Images
+This is a REST API service that allows users to post images, transform them and comment on them. It is built using Python, FastAPI, SQLAlchemy, Cloudinary, and qrcode.
 
 ### Technologies
 Python - Programming language
@@ -39,16 +37,16 @@ uvicorn app.main:app --reload
 
 
 
-## How to use?
+## How to use it?
 ### Authorization
 
-+ Before use User should be signed up with unique username, first name, last name, email and password.
-+ After sign up User should confirm its email.
++ Before use User should be signed up with a unique username, first name, last name, email, and password.
++ After signing up User should confirm their email.
 
 ### Features
 
 + Users can post images and add image tags.
-+ Posted images can be rated and commented by other users.
++ Posted images can be rated and commented on by other users.
 
 ### Endpoints
 The API supports the following endpoints described in project documentation [GoIT Team 3 WEB project](docs/_build/static/index.html)
@@ -57,7 +55,7 @@ The API supports the following endpoints described in project documentation [GoI
 ### Our Team 3:
 Developer: [Olga Nazarenko](https://github.com/OlgaNazarenko)  
 Developer: [Serhii Pidkopai](https://github.com/SSP0d)  
-Developer: [Valeri ](https://github.com/valeri7122)  
+Developer: [Valerii Tretiakov](https://github.com/valeri7122)  
 Developer: [Taras Plaksii](https://github.com/TT1410)  
 Developer + Scrum Muster: [Yaroslav Zhuk](https://github.com/YaroslavZq)  
 Developer + Team Lead : [Andrii Cheban](https://github.com/AndrewCheUA)
