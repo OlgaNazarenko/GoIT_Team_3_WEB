@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["TT1410 <112493080+TT1410@users.noreply.github.com>"]
 readme = "README.md"
-packages = [{include = "goit_team_3_web"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
