@@ -55,3 +55,7 @@ class ImageFormatsResponse(CoreModel):
 class ImageTransformationResponse(CoreModel):
     parent_image: ImagePublic
     formatted_image: FormattedImagePublic
+
+
+class ImageFormatRemoveResponse(CoreModel):
+    message: str = "Image format successfully deleted"

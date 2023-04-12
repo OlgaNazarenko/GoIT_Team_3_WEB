@@ -36,14 +36,16 @@ async def create_image(user_id: int, description: str, tags: list[str], public_i
         description=description,
         public_id=public_id
     )
-    db.add(image)
 
     if tags:
         image.tags = await get_or_create_tags(tags, db)
 
+    db.add(image)
+
     await db.commit()
 
     await db.refresh(image)
+
     return image
 
 

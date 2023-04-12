@@ -7,7 +7,7 @@ from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connect import get_db
-from app.database.models import User
+from app.database.models import User, UserRole
 from app.repository import images as repository_images
 from app.repository import image_formats as repository_image_formats
 from app.repository.images import get_image_by_id
@@ -15,6 +15,7 @@ from app.schemas.image_formats import (
     ImageTransformation,
     FormattedImageCreateResponse,
     ImageFormatsResponse,
+    ImageFormatRemoveResponse,
 )
 from app.services import cloudinary
 from app.services.auth import get_current_active_user
@@ -95,6 +96,34 @@ async def get_image_formats(
         image_format.public_id = image.public_id
 
     return {"parent_image": image, "formatted_images": image_formats}
+
+
+@router.delete("/{image_format_id}", response_model=ImageFormatRemoveResponse,
+               dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def delete_image_format(
+        image_format_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """
+    The delete_image_format function deletes an image format from the database.
+
+    :param image_format_id: int: Get the image format by id
+    :param db: AsyncSession: Get the database session
+    :param current_user: User: Get the current user from the database
+    :return: A dictionary with a message
+    """
+    image_format = await repository_image_formats.get_image_format_by_id(image_format_id, db)
+
+    if image_format is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found image format")
+
+    if current_user.role != UserRole.admin and image_format.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    await repository_image_formats.remove_image_format(image_format, db)
+
+    return {"message": "Image format successfully deleted"}
 
 
 @router.get('/qr-code/{image_format_id}')

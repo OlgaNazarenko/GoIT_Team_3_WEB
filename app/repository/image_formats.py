@@ -53,7 +53,26 @@ async def get_image_formats_by_image_id(user_id: int, image_id: int, db: AsyncSe
 
 
 async def get_image_format_by_id(image_format_id: int, db: AsyncSession) -> Image:
+    """
+    The get_image_format_by_id function returns an ImageFormat object from the database.
+
+    :param image_format_id: int: Specify the image format id
+    :param db: AsyncSession: Pass in the database session
+    :return: An image object
+    """
     return await db.scalar(
         select(ImageFormat)
         .filter(ImageFormat.id == image_format_id)
     )
+
+
+async def remove_image_format(image_format: ImageFormat, db: AsyncSession) -> None:
+    """
+    The remove_image_format function removes an image format from the database.
+
+    :param image_format: ImageFormat: Specify what image format we want to delete
+    :param db: AsyncSession: Pass the database connection to the function
+    :return: None
+    """
+    await db.delete(image_format)
+    await db.commit()
