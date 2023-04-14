@@ -123,4 +123,5 @@ async def get_images(
 
     image = await db.scalars(query.offset(skip).limit(limit))
 
-    return image.unique().all()  # noqa
+    # return image.unique().all()  # noqa
+    return list(set(image))

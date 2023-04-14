@@ -56,56 +56,32 @@ class TestComments(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(result)
 
+    async def test_get_comments_by_image_or_user_id(self):
+        mock_result = ['comment1', 'comment2']
+        self.session.scalars.return_value.all.return_value = mock_result
+
+        result = await get_comments_by_image_or_user_id(user_id=1, image_id=2, skip=0, limit=10, db=self.session)
+
+        self.session.scalars.assert_called_once()
+        assert await result == mock_result, f"expected: {mock_result}, but got: {await result}"
+
     async def test_get_comments_by_image_id(self):
-        comments = [
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-        ]
-        self.session.scalars.return_value = comments
+        mock_result = ['comment1', 'comment2']
+        self.session.scalars.return_value.all.return_value = mock_result
 
-        image_id = self.comment['image_id']
-        result = await get_comments_by_image_or_user_id(
-            user_id=None, image_id=image_id, skip=0, limit=2, db=self.session
-        )
+        result = await get_comments_by_image_or_user_id(user_id=None, image_id=2, skip=0, limit=10, db=self.session)
 
-        for comment in comments:
-            if comment.image_id == image_id:
-                self.assertIn(comment, result)
+        self.session.scalars.assert_called_once()
+        assert await result == mock_result, f"expected: {mock_result}, but got: {await result}"
 
     async def test_get_comments_by_user_id(self):
-        comments = [
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-        ]
-        self.session.scalars.return_value = comments
+        mock_result = ['comment1', 'comment2']
+        self.session.scalars.return_value.all.return_value = mock_result
 
-        user_id = self.comment['user_id']
-        result = await get_comments_by_image_or_user_id(
-            user_id=user_id, image_id=None, skip=0, limit=10, db=self.session
-        )
+        result = await get_comments_by_image_or_user_id(user_id=1, image_id=None, skip=0, limit=10, db=self.session)
 
-        expected_result = [comment for comment in comments if comment.user_id == self.comment['user_id']]
-        self.assertEqual(result, expected_result)
-
-    async def test_get_comments_by_image_and_user_id(self):
-        comments = [
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-            ImageComment(**self.comment),
-        ]
-        self.session.scalars.return_value = comments
-
-        image_id = self.comment['image_id']
-        user_id = self.comment['user_id']
-        result = await get_comments_by_image_or_user_id(
-            user_id=user_id, image_id=image_id, skip=0, limit=10, db=self.session
-        )
-
-        self.assertIn(comments[0], result)
-        self.assertIn(comments[1], result)
-        self.assertIn(comments[2], result)
+        self.session.scalars.assert_called_once()
+        assert await result == mock_result, f"expected: {mock_result}, but got: {await result}"
 
     async def test_remove_comment_found(self):
         mock_comment = ImageComment(**self.comment)
