@@ -63,7 +63,7 @@ uvicorn app.main:app --reload
 + Posted images can be rated and commented on by other users.
 
 ### Endpoints
-The API supports the following endpoints described in project documentation [GoIT Team 3 WEB project](docs/_build/static/index.html)
+The API supports the following endpoints described in project documentation [GoIT Team 3 WEB project](http://localhost:63342/Untitled/docs/_build/html/index.html?_ijt=l4sghn4dmdrhcg8ems2qtd027u&_ij_reload=RELOAD_ON_SAVE)
 
 
 ### Our Team 3:
