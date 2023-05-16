@@ -1,4 +1,18 @@
 ## REST API Service for Posting, Transforming, and Commenting on Images
+
+<p align="center">
+    <img src="https://img.shields.io/badge/Language-Python-9cf">
+    <img src="https://img.shields.io/badge/Version-3.6.6-36c8e6">
+    <img src="https://img.shields.io/badge/FastAPI-0.95.1-3ec689">
+    <img src="https://img.shields.io/badge/SQLAlchemy-2.0-f9a033">
+    <img src="https://img.shields.io/badge/Pytest-7.3.0-7a6fb8">
+    <img src="https://img.shields.io/badge/Unittest-00a0e6">
+    <img src="https://img.shields.io/badge/License-MIT-yellow">
+
+</p>
+
+## About
+
 This is a REST API service that allows users to post images, transform them and comment on them. It is built using Python, FastAPI, SQLAlchemy, Cloudinary, and qrcode.
 
 ### Technologies
@@ -53,9 +67,13 @@ The API supports the following endpoints described in project documentation [GoI
 
 
 ### Our Team 3:
-Developer: [Olga Nazarenko](https://github.com/OlgaNazarenko)  
-Developer: [Serhii Pidkopai](https://github.com/SSP0d)  
-Developer: [Valeri Tretiakov](https://github.com/valeri7122)  
-Developer: [Taras Plaksii](https://github.com/TT1410)  
-Developer + Scrum Muster: [Yaroslav Zhuk](https://github.com/YaroslavZq)  
-Developer + Team Lead : [Andrii Cheban](https://github.com/AndrewCheUA)
+
+</p>
+<div align="left">
+  <a href="https://github.com/SSP0d">Serhii Pidkopai</a><br>
+  <a href="https://github.com/valeri7122">Valeri Tretiakov</a><br>
+  <a href="https://github.com/TT1410">Taras Plaksii</a><br>
+  <a href="https://github.com/OlgaNazarenko">Olga Nazarenko</a><br>
+  <a href="https://github.com/YaroslavZq">Yaroslav Zhuk</a><br>
+  <a href="https://github.com/AndrewCheUA">Andrii Cheban</a><br>
+</div>
